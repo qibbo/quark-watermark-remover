@@ -14,7 +14,6 @@ def build():
         "--hidden-import", "tkinter",
         "--hidden-import", "_tkinter",
         "--hidden-import", "tkinter.constants",
-        "--exclude-module", "pathlib",
     ]
 
     if os.path.exists("logo/logo.ico"):

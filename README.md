@@ -28,10 +28,12 @@ python main.py
 
 ```bash
 # 必须在虚拟环境中打包（Anaconda 的 pathlib 与 PyInstaller 冲突）
+# 首次使用：创建虚拟环境并安装依赖
 python -m venv .venv
-source .venv/Scripts/activate
-pip install -r requirements.txt
-python build.py
+.venv/Scripts/pip install -r requirements.txt pyinstaller
+
+# 打包
+.venv/Scripts/python build.py
 ```
 
 打包完成后，EXE 文件位于 `dist/夸克去水印.exe`。
@@ -59,7 +61,7 @@ python build.py
 | 场景 | 显示 |
 |------|------|
 | 处理成功 | 绿色「完成」 |
-| 无水印（已处理过） | 灰色「跳过」 |
+| 无水印（已处理过） | 灰色「无水印，跳过」 |
 | 文件已加密 | 红色「失败-文件已加密」 |
 | 文件损坏 | 红色「失败-文件损坏」 |
 | 非 PDF 文件 | 红色「失败-非PDF文件」 |

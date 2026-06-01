@@ -19,8 +19,12 @@ python -m pytest tests/ -v
 python -m pytest tests/test_watermark_remover.py::test_remove_watermark_creates_output -v
 
 # 打包 EXE（必须在虚拟环境中，Anaconda 的 pathlib 包会与 PyInstaller 冲突）
-# 首次使用：python -m venv .venv && source .venv/Scripts/activate && pip install -r requirements.txt
-python build.py
+# 首次使用：创建虚拟环境并安装依赖
+python -m venv .venv
+.venv/Scripts/pip install -r requirements.txt pyinstaller
+
+# 打包
+.venv/Scripts/python build.py
 ```
 
 ## 架构

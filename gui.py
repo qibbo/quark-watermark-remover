@@ -506,7 +506,7 @@ class App(BaseClass):
                 self.after(0, lambda sl=status_label: sl.configure(text="完成", text_color=COLORS["success"]))
             except WatermarkNotFoundError:
                 skip += 1
-                self.after(0, lambda sl=status_label: sl.configure(text="跳过", text_color=COLORS["text_sub"]))
+                self.after(0, lambda sl=status_label: sl.configure(text="无水印，跳过", text_color=COLORS["text_sub"]))
             except NotPdfFileError:
                 fail += 1
                 self.after(0, lambda sl=status_label: sl.configure(text="失败-非PDF文件", text_color=COLORS["fail"]))
