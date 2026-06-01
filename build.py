@@ -10,6 +10,7 @@ def build():
         sys.executable, "-m", "PyInstaller",
         "--onefile",
         "--windowed",
+        "--exclude-module", "pathlib",
         "--name", "夸克去水印",
         "--add-data", f"config.json;." if os.path.exists("config.json") else "",
         "main.py",
