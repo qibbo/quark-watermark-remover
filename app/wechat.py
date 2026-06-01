@@ -4,6 +4,7 @@ import requests
 import tempfile
 import os
 import time
+import hashlib
 from datetime import datetime
 from app.pdf_processor import process_pdf
 
@@ -213,8 +214,17 @@ async def wechat_verify(
     echostr: str = Query(...)
 ):
     """企业微信 URL 验证"""
-    # 简化验证，实际需要使用 Token 和 EncodingAESKey
-    return echostr
+    token = os.getenv("WECHAT_TOKEN", "")
+
+    # 签名验证：将 token、timestamp、nonce、echostr 排序后拼接，进行 SHA1 哈希
+    params = sorted([token, timestamp, nonce, echostr])
+    sign_str = "".join(params)
+    sign = hashlib.sha1(sign_str.encode("utf-8")).hexdigest()
+
+    if sign == msg_signature:
+        return echostr
+    else:
+        return "签名验证失败"
 
 @router.post("/callback")
 async def wechat_callback(request: Request, background_tasks: BackgroundTasks):
