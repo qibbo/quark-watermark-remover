@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 批量去除夸克扫描王非会员版 PDF 水印的桌面工具，打包为独立 EXE 发给同事使用。
 
-当前版本：v1.2.0（EXE 文件名包含版本号：`夸克去水印_v1.2.0.exe`）
+当前版本：v1.3.0（EXE 文件名包含版本号：`夸克去水印_v1.3.0.exe`）
 
 ## 常用命令
 
