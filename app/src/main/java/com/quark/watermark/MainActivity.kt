@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,13 +41,15 @@ class MainActivity : ComponentActivity() {
             QuarkWatermarkTheme {
                 var files by remember { mutableStateOf(listOf<FileItem>()) }
                 var result by remember { mutableStateOf<ProcessResult?>(null) }
+                var savedUris by remember { mutableStateOf(listOf<Uri>()) }
                 val scope = rememberCoroutineScope()
 
                 onFilesSelected = { uris ->
                     scope.launch {
-                        val (newFiles, processResult) = processFiles(uris)
+                        val (newFiles, processResult, uris) = processFiles(uris)
                         files = newFiles
                         result = processResult
+                        savedUris = uris
                     }
                 }
 
@@ -61,8 +64,14 @@ class MainActivity : ComponentActivity() {
                     onSelectFile = {
                         filePickerLauncher.launch(arrayOf("application/pdf"))
                     },
-                    onSave = { },
-                    onShare = { },
+                    onSave = {
+                        Toast.makeText(this@MainActivity, "文件已保存到 Downloads/夸克去水印/", Toast.LENGTH_SHORT).show()
+                    },
+                    onShare = {
+                        if (savedUris.isNotEmpty()) {
+                            FileUtils.sharePdf(this@MainActivity, savedUris.first())
+                        }
+                    },
                     result = result,
                     onResultDismiss = { result = null }
                 )
@@ -82,9 +91,16 @@ class MainActivity : ComponentActivity() {
         return null
     }
 
-    private suspend fun processFiles(uris: List<Uri>): Pair<List<FileItem>, ProcessResult> {
+    private data class ProcessOutput(
+        val files: List<FileItem>,
+        val result: ProcessResult,
+        val savedUris: List<Uri>
+    )
+
+    private suspend fun processFiles(uris: List<Uri>): ProcessOutput {
         val fileList = mutableListOf<FileItem>()
         val failures = mutableListOf<Pair<String, String>>()
+        val savedUriList = mutableListOf<Uri>()
         var successCount = 0
 
         for (uri in uris) {
@@ -115,6 +131,7 @@ class MainActivity : ComponentActivity() {
                     }
                     if (savedUri != null) {
                         fileList[fileList.lastIndex] = FileItem(name, FileStatus.SUCCESS)
+                        savedUriList.add(savedUri)
                         successCount++
                     } else {
                         fileList[fileList.lastIndex] = FileItem(name, FileStatus.FAIL)
@@ -127,6 +144,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        return fileList to ProcessResult(successCount, failures.size, failures)
+        return ProcessOutput(fileList, ProcessResult(successCount, failures.size, failures), savedUriList)
     }
 }
