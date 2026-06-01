@@ -14,32 +14,6 @@ QQ_SECRET = os.getenv("QQ_SECRET", "")
 
 _log = logging.get_logger()
 
-# access_token 缓存
-_token_cache = {
-    "token": None,
-    "expires_at": 0
-}
-
-def get_access_token() -> str:
-    """获取 QQ 机器人 access_token"""
-    if _token_cache["token"] and time.time() < _token_cache["expires_at"]:
-        return _token_cache["token"]
-
-    url = "https://bots.qq.com/app/getAppAccessToken"
-    data = {
-        "appId": QQ_APPID,
-        "clientSecret": QQ_SECRET
-    }
-    response = requests.post(url, json=data)
-    result = response.json()
-
-    if "access_token" not in result:
-        raise Exception(f"获取 access_token 失败: {result}")
-
-    _token_cache["token"] = result["access_token"]
-    _token_cache["expires_at"] = time.time() + int(result["expires_in"]) - 200
-
-    return result["access_token"]
 
 async def download_file(url: str) -> str:
     """下载文件"""
@@ -53,15 +27,21 @@ async def download_file(url: str) -> str:
         f.write(response.content)
     return temp_path
 
-async def upload_file(file_path: str) -> str:
-    """上传文件到 QQ"""
-    token = get_access_token()
+
+async def upload_file(file_path: str, message: C2CMessage) -> str:
+    """上传文件到 QQ，使用 botpy 内置 token 管理"""
+    http = message._api._http
+    token = http._token
+
+    await token.check_token()
+    auth_string = token.get_string()
+
     url = "https://api.sgroup.qq.com/v2/users/me/files"
     headers = {
-        "Authorization": f"Bot {QQ_APPID}.{token}"
+        "Authorization": auth_string,
     }
     with open(file_path, "rb") as f:
-        files = {"file": f}
+        files = {"file": (os.path.basename(file_path), f)}
         response = requests.post(url, headers=headers, files=files)
 
     if response.status_code != 200:
@@ -70,41 +50,6 @@ async def upload_file(file_path: str) -> str:
     result = response.json()
     return result.get("file_info", "")
 
-async def send_file_message(openid: str, file_info: str, msg_id: str):
-    """发送文件消息（单聊）"""
-    token = get_access_token()
-    url = f"https://api.sgroup.qq.com/v2/users/{openid}/messages"
-    headers = {
-        "Authorization": f"Bot {QQ_APPID}.{token}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "msg_type": 7,
-        "media": {
-            "file_info": file_info
-        },
-        "msg_id": msg_id
-    }
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code != 200:
-        raise Exception(f"消息发送失败: {response.text}")
-
-async def send_text_message(openid: str, content: str, msg_id: str):
-    """发送文本消息（单聊）"""
-    token = get_access_token()
-    url = f"https://api.sgroup.qq.com/v2/users/{openid}/messages"
-    headers = {
-        "Authorization": f"Bot {QQ_APPID}.{token}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "msg_type": 0,
-        "content": content,
-        "msg_id": msg_id
-    }
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code != 200:
-        raise Exception(f"消息发送失败: {response.text}")
 
 async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
     """处理 PDF 并发送"""
@@ -126,13 +71,14 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
 
         if result["success"]:
             # 上传文件
-            file_info = await upload_file(output_path)
+            file_info = await upload_file(output_path, message)
 
-            # 发送文件
-            await message._api.post_c2c_file(
+            # 发送文件消息
+            await message._api.post_c2c_message(
                 openid=message.author.user_openid,
-                file_type=1,
-                url=file_info
+                msg_type=7,
+                media={"file_info": file_info},
+                msg_id=message.id
             )
 
             _log.info(f"处理成功: {file_name}, 耗时: {result['cost']}s")
@@ -160,6 +106,7 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
         except:
             pass
 
+
 def cleanup_temp_files(*file_paths):
     """清理临时文件"""
     for file_path in file_paths:
@@ -168,6 +115,7 @@ def cleanup_temp_files(*file_paths):
                 os.remove(file_path)
             except Exception as e:
                 _log.info(f"清理文件失败 {file_path}: {e}")
+
 
 class MyClient(botpy.Client):
     async def on_ready(self):
@@ -208,6 +156,7 @@ class MyClient(botpy.Client):
                         "file.pdf"
                     )
                 )
+
 
 def start_qq_bot():
     """启动 QQ 机器人"""
