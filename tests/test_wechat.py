@@ -53,3 +53,9 @@ def test_send_file_message():
     # 这里需要 mock 企业微信 API
     # 暂时跳过实际测试，后续集成测试时验证
     pass
+
+def test_integration():
+    """集成测试：完整流程"""
+    # 这里需要准备测试环境
+    # 暂时跳过实际测试，后续手动验证
+    pass
