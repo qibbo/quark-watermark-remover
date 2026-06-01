@@ -14,3 +14,4 @@ build/
 # Keystore（不应提交到版本控制）
 *.keystore
 *.jks
+java_pid*.hprof
