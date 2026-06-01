@@ -71,6 +71,8 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
                     server_url = f"https://{domain}"
                 else:
                     raise Exception("未配置 SERVER_URL，请在 Railway 环境变量中设置")
+            if not server_url.startswith("http"):
+                server_url = f"https://{server_url}"
 
             download_url = f"{server_url}/temp/{temp_file_id}"
             _log.info(f"文件下载 URL: {download_url}")
