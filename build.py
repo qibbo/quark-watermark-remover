@@ -11,6 +11,10 @@ def build():
         "--onefile",
         "--windowed",
         "--name", "夸克去水印",
+        "--hidden-import", "tkinter",
+        "--hidden-import", "_tkinter",
+        "--hidden-import", "tkinter.constants",
+        "--exclude-module", "pathlib",
     ]
 
     if os.path.exists("logo/logo.ico"):
