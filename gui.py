@@ -1,5 +1,6 @@
 # gui.py - 使用 pypdf 的 GUI 界面
 import os
+import sys
 import threading
 import customtkinter as ctk
 from tkinter import filedialog
@@ -51,6 +52,15 @@ def _get_font(size=13, weight="normal"):
     return ctk.CTkFont(family=FONT_FAMILY, size=size, weight=weight)
 
 
+def resource_path(relative_path):
+    """获取资源文件的正确路径（兼容开发模式和 PyInstaller 打包模式）"""
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
+
 def _classify_error(e: Exception) -> str:
     """将异常转换为简短的友好提示"""
     msg = str(e).lower()
@@ -86,18 +96,26 @@ class App(BaseClass):
         if self.app_config.window_x is not None and self.app_config.window_y is not None:
             self.geometry(f"+{self.app_config.window_x}+{self.app_config.window_y}")
 
-        # 设置窗口图标（兼容开发模式和打包模式）
-        import sys
-        if getattr(sys, "frozen", False):
-            base_dir = os.path.dirname(sys.executable)
-        else:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-        icon_path = os.path.join(base_dir, "logo", "logo.ico")
-        if os.path.exists(icon_path):
-            try:
-                self.iconbitmap(icon_path)
-            except Exception:
-                pass
+        # 设置窗口图标（兼容开发模式和 PyInstaller 打包模式）
+        try:
+            # 获取图标路径
+            ico_path = resource_path(os.path.join("logo", "logo.ico"))
+            png_path = resource_path(os.path.join("logo", "logo.png"))
+
+            # 设置窗口标题栏图标（ICO 格式）
+            if os.path.exists(ico_path):
+                self.iconbitmap(ico_path)
+
+            # 设置任务栏图标（PNG 格式）
+            # 使用 withdraw/deiconify 技巧强制刷新窗口句柄
+            if os.path.exists(png_path):
+                import tkinter as tk
+                self._icon_image = tk.PhotoImage(file=png_path)
+                self.withdraw()  # 隐藏窗口
+                self.iconphoto(True, self._icon_image)  # 设置图标
+                self.deiconify()  # 重新显示窗口
+        except Exception as e:
+            print(f"设置图标失败: {e}")
 
         # 设置窗口背景色（TkinterDnD.Tk 不支持 fg_color）
         try:
