@@ -1,31 +1,41 @@
 import os
 import pytest
-import fitz
+import pypdf
+from pypdf.generic import ArrayObject, DecodedStreamObject, NameObject, NumberObject, DictionaryObject
 from watermark_remover import remove_watermark, WatermarkNotFoundError
+
+
+def create_test_pdf(tmp_path, filename="test.pdf", include_watermark=True):
+    """创建测试 PDF 文件"""
+    pdf_path = tmp_path / filename
+    writer = pypdf.PdfWriter()
+
+    # 添加两页
+    for _ in range(2):
+        page = writer.add_blank_page(width=595, height=842)
+
+        # 创建内容流
+        stream = DecodedStreamObject()
+        if include_watermark:
+            content = b"q\n0 0 0 RG\n/QuarkE1 gs q 535 0 0 841 29 66 cm /QuarkX1 Do Q\nq 162 0 0 50 389 8 cm /QuarkX2 Do Q\nQ\n"
+        else:
+            content = b"q\n0 0 0 RG\n/QuarkE1 gs q 535 0 0 841 29 66 cm /QuarkX1 Do Q\nQ\n"
+        stream.set_data(content)
+
+        # 设置页面内容
+        page[NameObject("/Contents")] = stream
+        page[NameObject("/Resources")] = DictionaryObject()
+
+    with open(pdf_path, "wb") as f:
+        writer.write(f)
+
+    return pdf_path
 
 
 @pytest.fixture
 def sample_pdf(tmp_path):
-    """创建一个带水印的测试 PDF"""
-    pdf_path = tmp_path / "test.pdf"
-    doc = fitz.open()
-
-    # 添加两页
-    for _ in range(2):
-        page = doc.new_page(width=595, height=907)
-        # 先画点东西创建内容流
-        shape = page.new_shape()
-        shape.draw_rect(fitz.Rect(0, 0, 10, 10))
-        shape.finish(color=(0, 0, 0))
-        shape.commit()
-        # 替换为模拟水印内容流
-        content = b"q\n0 0 0 RG\n/QuarkE1 gs q 535 0 0 841 29 66 cm /QuarkX1 Do Q\nq 162 0 0 50 389 8 cm /QuarkX2 Do Q\nQ\n"
-        for xref in page.get_contents():
-            doc.update_stream(xref, content)
-
-    doc.save(str(pdf_path))
-    doc.close()
-    return pdf_path
+    """创建带水印的测试 PDF"""
+    return create_test_pdf(tmp_path, include_watermark=True)
 
 
 def test_remove_watermark_creates_output(sample_pdf):
@@ -41,13 +51,15 @@ def test_remove_watermark_removes_quarkx2(sample_pdf):
     output_path = sample_pdf.parent / "test_去水印.pdf"
     remove_watermark(str(sample_pdf), str(output_path))
 
-    doc = fitz.open(str(output_path))
-    for page in doc:
-        for xref in page.get_contents():
-            stream = doc.xref_stream(xref)
-            if stream:
-                assert b"QuarkX2" not in stream
-    doc.close()
+    reader = pypdf.PdfReader(str(output_path))
+    for page in reader.pages:
+        if "/Contents" in page:
+            contents = page["/Contents"]
+            if hasattr(contents, "get_object"):
+                stream = contents.get_object()
+                if hasattr(stream, "get_data"):
+                    data = stream.get_data()
+                    assert b"QuarkX2" not in data
 
 
 def test_remove_watermark_preserves_content(sample_pdf):
@@ -55,30 +67,21 @@ def test_remove_watermark_preserves_content(sample_pdf):
     output_path = sample_pdf.parent / "test_去水印.pdf"
     remove_watermark(str(sample_pdf), str(output_path))
 
-    doc = fitz.open(str(output_path))
-    assert doc.page_count == 2
-    for page in doc:
-        for xref in page.get_contents():
-            stream = doc.xref_stream(xref)
-            if stream:
-                assert b"QuarkX1" in stream
-    doc.close()
+    reader = pypdf.PdfReader(str(output_path))
+    assert len(reader.pages) == 2
+    for page in reader.pages:
+        if "/Contents" in page:
+            contents = page["/Contents"]
+            if hasattr(contents, "get_object"):
+                stream = contents.get_object()
+                if hasattr(stream, "get_data"):
+                    data = stream.get_data()
+                    assert b"QuarkX1" in data
 
 
 def test_remove_watermark_no_watermark(tmp_path):
     """测试无水印文件应抛出 WatermarkNotFoundError"""
-    pdf_path = tmp_path / "no_watermark.pdf"
-    doc = fitz.open()
-    page = doc.new_page()
-    shape = page.new_shape()
-    shape.draw_rect(fitz.Rect(0, 0, 10, 10))
-    shape.finish(color=(0, 0, 0))
-    shape.commit()
-    content = b"q\n0 0 0 RG\n/QuarkE1 gs q 535 0 0 841 29 66 cm /QuarkX1 Do Q\nQ\n"
-    for xref in page.get_contents():
-        doc.update_stream(xref, content)
-    doc.save(str(pdf_path))
-    doc.close()
+    pdf_path = create_test_pdf(tmp_path, "no_watermark.pdf", include_watermark=False)
 
     output_path = tmp_path / "no_watermark_去水印.pdf"
     with pytest.raises(WatermarkNotFoundError):
@@ -87,18 +90,7 @@ def test_remove_watermark_no_watermark(tmp_path):
 
 def test_output_naming_conflict(tmp_path):
     """测试文件冲突时自动重命名"""
-    pdf_path = tmp_path / "test.pdf"
-    doc = fitz.open()
-    page = doc.new_page(width=595, height=907)
-    shape = page.new_shape()
-    shape.draw_rect(fitz.Rect(0, 0, 10, 10))
-    shape.finish(color=(0, 0, 0))
-    shape.commit()
-    content = b"q\n0 0 0 RG\n/QuarkE1 gs q 535 0 0 841 29 66 cm /QuarkX1 Do Q\nq 162 0 0 50 389 8 cm /QuarkX2 Do Q\nQ\n"
-    for xref in page.get_contents():
-        doc.update_stream(xref, content)
-    doc.save(str(pdf_path))
-    doc.close()
+    pdf_path = create_test_pdf(tmp_path, include_watermark=True)
 
     # 创建已存在的输出文件
     output_path = tmp_path / "test_去水印.pdf"

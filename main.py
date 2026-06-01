@@ -1,4 +1,4 @@
-# main.py
+# main.py - 程序入口
 import sys
 import os
 

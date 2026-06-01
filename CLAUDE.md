@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 批量去除夸克扫描王非会员版 PDF 水印的桌面工具，打包为独立 EXE 发给同事使用。
 
-当前版本：v1.3.0（EXE 文件名包含版本号：`夸克去水印_v1.3.0.exe`）
+当前版本：v1.4.0（EXE 文件名包含版本号：`夸克去水印_v1.4.0.exe`，使用 pypdf 轻量引擎）
 
 ## 常用命令
 
@@ -31,7 +31,7 @@ python -m venv .venv
 
 ## 架构
 
-- `watermark_remover.py` — 核心逻辑：解析 PDF 内容流，删除 `QuarkX2` 水印引用行；定义 `WatermarkNotFoundError`、`NotPdfFileError` 异常
+- `watermark_remover.py` — 核心逻辑：使用 pypdf 解析 PDF 内容流，通过正则表达式删除 `QuarkX2` 水印命令；定义 `WatermarkNotFoundError`、`NotPdfFileError` 异常
 - `gui.py` — CustomTkinter 浅色精致界面，tkinterdnd2 拖拽支持，多线程批量处理，支持删除单个文件和排序
 - `config.py` — JSON 持久化配置（输出路径、窗口位置），存储在 `~/.quark-watermark-remover/config.json`
 - `main.py` — 入口，设置浅色模式，处理 windowed 模式下 stdout 为 None
@@ -40,8 +40,9 @@ python -m venv .venv
 ## 关键技术细节
 
 - UI 设计：浅色精致风，配色方案定义在 `gui.py` 的 `COLORS` 字典中，使用微软雅黑字体
-- 错误处理：`watermark_remover.py` 先检查 PDF 文件头（`%PDF-`），再调用 PyMuPDF；`gui.py` 分类捕获异常显示友好中文提示
-- 水印识别：查找 PDF 页面内容流中的 `QuarkX2` 图片引用并删除对应行
+- PDF 引擎：使用 pypdf（纯 Python），打包体积约 13MB，无二进制依赖
+- 错误处理：`watermark_remover.py` 先检查 PDF 文件头（`%PDF-`），再调用 pypdf；`gui.py` 分类捕获异常显示友好中文提示
+- 水印识别：通过正则表达式 `rb'q\s+[\d\s]+cm\s+/QuarkX2\s+Do\s+Q'` 匹配并删除水印命令
 - GUI 类根据 tkinterdnd2 可用性动态选择基类（`TkinterDnD.Tk` 或 `ctk.CTk`）
 - `self.app_config` 而非 `self.config`，避免与 tkinter 内置 `config` 方法冲突
 - 输出文件命名：`原文件名_去水印.pdf`，冲突时自动加数字后缀 `(2)`、`(3)`...

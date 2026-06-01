@@ -1,4 +1,4 @@
-# gui.py
+# gui.py - 使用 pypdf 的 GUI 界面
 import os
 import threading
 import customtkinter as ctk

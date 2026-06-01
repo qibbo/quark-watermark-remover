@@ -1,6 +1,7 @@
+# watermark_remover.py - PDF 水印去除核心逻辑
 import os
 import re
-import fitz
+import pypdf
 
 
 class WatermarkNotFoundError(Exception):
@@ -11,6 +12,10 @@ class WatermarkNotFoundError(Exception):
 class NotPdfFileError(Exception):
     """文件不是有效的 PDF"""
     pass
+
+
+# 匹配水印命令模式：q ... /QuarkX2 Do Q
+WATERMARK_PATTERN = re.compile(rb'q\s+[\d\s]+cm\s+/QuarkX2\s+Do\s+Q')
 
 
 def remove_watermark(input_path: str, output_path: str) -> bool:
@@ -34,33 +39,55 @@ def remove_watermark(input_path: str, output_path: str) -> bool:
     if header != b'%PDF-':
         raise NotPdfFileError("文件不是有效的 PDF")
 
-    doc = fitz.open(input_path)
-
     try:
-        found = False
-        # 匹配水印命令模式：q ... /QuarkX2 Do Q
-        watermark_pattern = re.compile(rb'q\s+[\d\s]+cm\s+/QuarkX2\s+Do\s+Q')
-        for page in doc:
-            contents = page.get_contents()
-            for xref in contents:
-                stream = doc.xref_stream(xref)
-                if stream and b"QuarkX2" in stream:
+        reader = pypdf.PdfReader(input_path)
+    except Exception as e:
+        raise NotPdfFileError(f"文件不是有效的 PDF: {e}")
+
+    found = False
+
+    for page in reader.pages:
+        # 获取内容流
+        if '/Contents' not in page:
+            continue
+
+        contents_ref = page['/Contents']
+
+        # 处理内容流可能是数组的情况
+        if isinstance(contents_ref, pypdf.generic.ArrayObject):
+            for ref in contents_ref:
+                if hasattr(ref, 'get_object'):
+                    stream = ref.get_object()
+                    if hasattr(stream, 'get_data'):
+                        data = stream.get_data()
+                        if b'QuarkX2' in data:
+                            found = True
+                            new_data = WATERMARK_PATTERN.sub(b'', data)
+                            new_data = re.sub(rb'\n{3,}', b'\n\n', new_data)
+                            stream.set_data(new_data)
+        elif hasattr(contents_ref, 'get_object'):
+            stream = contents_ref.get_object()
+            if hasattr(stream, 'get_data'):
+                data = stream.get_data()
+                if b'QuarkX2' in data:
                     found = True
-                    # 使用正则移除水印命令，保留其他内容
-                    new_stream = watermark_pattern.sub(b'', stream)
-                    # 清理多余的空行
-                    new_stream = re.sub(rb'\n{3,}', b'\n\n', new_stream)
-                    doc.update_stream(xref, new_stream)
+                    new_data = WATERMARK_PATTERN.sub(b'', data)
+                    new_data = re.sub(rb'\n{3,}', b'\n\n', new_data)
+                    stream.set_data(new_data)
 
-        if not found:
-            raise WatermarkNotFoundError("PDF 中未找到目标水印，可能已处理过")
+    if not found:
+        raise WatermarkNotFoundError("PDF 中未找到目标水印，可能已处理过")
 
-        # 处理文件冲突
-        final_path = _resolve_conflict(output_path)
+    # 处理文件冲突
+    final_path = _resolve_conflict(output_path)
 
-        doc.save(final_path)
-    finally:
-        doc.close()
+    # 保存修改后的 PDF
+    writer = pypdf.PdfWriter()
+    writer.append_pages_from_reader(reader)
+
+    with open(final_path, 'wb') as f:
+        writer.write(f)
+
     return True
 
 
