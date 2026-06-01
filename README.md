@@ -43,7 +43,7 @@ python -m venv .venv
 ```
 ├── main.py              # 程序入口
 ├── gui.py               # GUI 界面（CustomTkinter + 拖拽支持）
-├── watermark_remover.py # 核心去水印逻辑（PyMuPDF）
+├── watermark_remover.py # 核心去水印逻辑（pypdf）
 ├── config.py            # 配置管理（JSON 持久化）
 ├── build.py             # PyInstaller 打包脚本
 ├── generate_ico.py      # ICO 图标生成脚本
@@ -71,6 +71,6 @@ python -m venv .venv
 ## 依赖
 
 - `customtkinter` — 现代化 tkinter 主题
-- `PyMuPDF` — PDF 解析与修改
+- `pypdf` — PDF 解析与修改（纯 Python，轻量级）
 - `pyinstaller` — 打包为独立 EXE
 - `tkinterdnd2` — 文件拖拽支持（可选）
