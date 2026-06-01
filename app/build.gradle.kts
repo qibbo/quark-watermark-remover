@@ -19,9 +19,19 @@ android {
         versionName = appVersionName
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../quark-watermark.keystore")
+            storePassword = "123456"
+            keyAlias = "quark"
+            keyPassword = "123456"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

@@ -10,3 +10,7 @@ local.properties
 app/build/
 build/
 .gradle
+
+# Keystore（不应提交到版本控制）
+*.keystore
+*.jks
