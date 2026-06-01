@@ -180,13 +180,14 @@ class MyClient(botpy.Client):
         # 检查是否有附件
         if hasattr(message, 'attachments') and message.attachments:
             for attachment in message.attachments:
-                if hasattr(attachment, 'content_type') and attachment.content_type and "pdf" in attachment.content_type.lower():
+                filename = getattr(attachment, 'filename', '') or ''
+                if filename.lower().endswith('.pdf'):
                     # 异步处理 PDF
                     asyncio.create_task(
                         process_and_send(
                             message,
                             attachment.url,
-                            attachment.filename
+                            filename
                         )
                     )
                 else:
