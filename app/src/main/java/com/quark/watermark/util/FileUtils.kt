@@ -49,13 +49,23 @@ object FileUtils {
         }
     }
 
-    fun sharePdf(context: Context, uri: Uri) {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "application/pdf"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    fun sharePdf(context: Context, uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        if (uris.size == 1) {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, uris.first())
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "分享 PDF"))
+        } else {
+            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "application/pdf"
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "分享 PDF"))
         }
-        context.startActivity(Intent.createChooser(intent, "分享 PDF"))
     }
 
     fun getFileNameFromUri(context: Context, uri: Uri): String {

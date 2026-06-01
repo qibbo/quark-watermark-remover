@@ -3,16 +3,20 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val appVersionName = "1.0.3"
+
 android {
     namespace = "com.quark.watermark"
     compileSdk = 34
+
+    setProperty("archivesBaseName", "夸克去水印_v${appVersionName}")
 
     defaultConfig {
         applicationId = "com.quark.watermark"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = appVersionName
     }
 
     buildTypes {
