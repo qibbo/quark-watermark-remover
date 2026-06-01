@@ -9,7 +9,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.view.WindowCompat
 import androidx.compose.runtime.*
 import com.quark.watermark.core.WatermarkRemover
 import com.quark.watermark.ui.*
@@ -48,6 +47,7 @@ class MainActivity : ComponentActivity() {
                 var result by remember { mutableStateOf<ProcessResult?>(null) }
                 var savedUris by remember { mutableStateOf(listOf<Uri>()) }
                 var showResult by remember { mutableStateOf(false) }
+                var sortAscending by remember { mutableStateOf(true) }
                 val scope = rememberCoroutineScope()
 
                 onFilesSelected = { uris ->
@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onShare = {
                             if (savedUris.isNotEmpty()) {
-                                FileUtils.sharePdf(this@MainActivity, savedUris)
+                                shareFilesOneByOne(savedUris)
                             }
                         },
                         onBack = {
@@ -122,7 +122,27 @@ class MainActivity : ComponentActivity() {
                             if (!isProcessing) {
                                 files = files.toMutableList().also { it.removeAt(index) }
                             }
-                        }
+                        },
+                        onSortFiles = {
+                            if (!isProcessing) {
+                                val indices = files.indices.toList()
+                                val sorted = if (sortAscending) {
+                                    indices.sortedBy { files[it].name.lowercase() }
+                                } else {
+                                    indices.sortedByDescending { files[it].name.lowercase() }
+                                }
+                                files = sorted.map { files[it] }
+                                // 同步 URI 映射
+                                val newMap = mutableMapOf<Int, Uri>()
+                                sorted.forEachIndexed { newIndex, oldIndex ->
+                                    savedUriMap[oldIndex]?.let { newMap[newIndex] = it }
+                                }
+                                savedUriMap.clear()
+                                savedUriMap.putAll(newMap)
+                                sortAscending = !sortAscending
+                            }
+                        },
+                        sortAscending = sortAscending
                     )
                 }
             }
@@ -130,6 +150,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private val savedUriMap = mutableMapOf<Int, Uri>()
+
+    private fun shareFilesOneByOne(uris: List<Uri>) {
+        // 逐个分享，兼容微信等不支持多文件 PDF 的应用
+        for (uri in uris) {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, "分享 PDF"))
+        }
+    }
 
     private fun handleShareIntent(intent: Intent?): Uri? {
         if (intent?.action == Intent.ACTION_SEND && intent.type == "application/pdf") {

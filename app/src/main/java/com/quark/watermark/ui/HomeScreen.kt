@@ -37,14 +37,16 @@ fun HomeScreen(
     onSelectFile: () -> Unit,
     onStartProcess: () -> Unit,
     onClearList: () -> Unit,
-    onRemoveFile: (Int) -> Unit
+    onRemoveFile: (Int) -> Unit,
+    onSortFiles: () -> Unit,
+    sortAscending: Boolean
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(16.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
     ) {
         // ── 标题 ──
         Text(
@@ -95,6 +97,16 @@ fun HomeScreen(
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
+            if (files.size > 1) {
+                Text(
+                    text = if (sortAscending) "↕ A→Z" else "↕ Z→A",
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    modifier = Modifier
+                        .clickable(enabled = !isProcessing) { onSortFiles() }
+                        .padding(4.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -134,7 +146,7 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // ── 进度条 ──
         Column {
@@ -161,7 +173,7 @@ fun HomeScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // ── 操作按钮 ──
         Row(
@@ -193,7 +205,6 @@ fun HomeScreen(
             }
         }
     }
-
 }
 
 @Composable
