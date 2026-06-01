@@ -1,11 +1,9 @@
 from fastapi import FastAPI
-from app.wechat import router as wechat_router
 from app.qq_bot import start_qq_bot
 import asyncio
 import os
 
 app = FastAPI(title="PDF 助手")
-app.include_router(wechat_router, prefix="/wechat")
 
 @app.get("/")
 async def root():

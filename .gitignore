@@ -7,3 +7,5 @@ config.json
 .venv/
 build_env/
 测试文件/
+logo/
+.pytest_cache/
