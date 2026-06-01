@@ -40,10 +40,7 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
         result = await process_pdf(input_path, output_path)
 
         if result["success"]:
-            # 上传文件
-            file_info = await upload_file(output_path, message.author.user_openid, message)
-
-            # 发送文件消息（srv_send_msg=True 直接发送）
+            # 上传文件并直接发送（srv_send_msg=True）
             http = message._api._http
             token = http._token
             await token.check_token()
