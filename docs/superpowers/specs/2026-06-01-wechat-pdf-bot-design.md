@@ -18,16 +18,20 @@ Railway (FastAPI)
     ├─ /wechat/callback  # 接收消息
     │      │
     │      ▼
-    │  解析消息，下载 PDF
+    │  解析消息，验证白名单
     │      │
     │      ▼
-    │  watermark_remover.py
+    │  立即返回 success（避免超时）
     │      │
     │      ▼
-    │  上传处理后的 PDF
-    │      │
-    │      ▼
-    └─ 返回文件给用户
+    │  后台异步处理：
+    │    ├─ 下载 PDF
+    │    ├─ watermark_remover.py
+    │    ├─ 上传结果
+    │    ├─ 发送文件给用户
+    │    └─ 清理临时文件
+    │
+    └─ 记录运行日志
 ```
 
 ## 组件职责
@@ -39,25 +43,62 @@ Railway (FastAPI)
 | `app/pdf_processor.py` | PDF 处理：调用 watermark_remover，处理异常，返回结果 |
 | `watermark_remover.py` | 核心逻辑：已有，不修改 |
 
-## 数据流
+## 数据流（异步处理）
 
 1. **接收消息**：企业微信 POST 到 `/wechat/callback`
-2. **解析消息**：从 XML 中提取文件 MediaID
-3. **下载文件**：用 MediaID 调用企业微信 API 下载 PDF
-4. **处理 PDF**：调用 `watermark_remover.remove_watermark()`
-5. **上传文件**：将处理后的 PDF 上传到企业微信，获取新 MediaID
-6. **发送回复**：用新 MediaID 发送文件给用户
+2. **验证白名单**：检查发送者是否在 `ALLOWED_USERS` 中
+3. **立即返回**：返回 "success"，避免企业微信回调超时
+4. **后台处理**：
+   - 解析消息，提取文件 MediaID
+   - 下载文件：用 MediaID 调用企业微信 API 下载 PDF
+   - 处理 PDF：调用 `watermark_remover.remove_watermark()`
+   - 上传文件：将处理后的 PDF 上传到企业微信，获取新 MediaID
+   - 发送回复：用新 MediaID 发送文件给用户
+   - 清理临时文件：删除 input.pdf 和 output.pdf
+5. **记录日志**：记录时间、发送人、文件名、处理耗时、处理结果
+
+## 用户白名单
+
+仅允许指定用户使用：
+
+```python
+ALLOWED_USERS = [
+    "userid_a",
+    "userid_b"
+]
+```
+
+非白名单用户收到提示：
+
+```
+该应用暂未开放使用
+```
 
 ## 错误处理
 
+统一策略：收到文件 → 执行处理 → 返回结果文件
+
+暂不增加 "PDF 中未找到水印" 等业务判断，降低复杂度和误判概率。
+
 | 场景 | 处理方式 |
 |------|----------|
+| 非白名单用户 | 返回"该应用暂未开放使用" |
 | 非 PDF 文件 | 返回"请发送 PDF 文件" |
-| PDF 无水印 | 返回"PDF 中未找到水印，可能已处理过" |
-| PDF 损坏 | 返回"PDF 文件损坏，无法处理" |
-| 下载失败 | 返回"文件下载失败，请重试" |
-| 上传失败 | 返回"处理完成但上传失败，请重试" |
-| 未知错误 | 返回"处理失败，请联系管理员" + 记录日志 |
+| 处理失败 | 返回"处理失败，请重试" |
+
+## 运行日志
+
+记录以下信息用于排查问题：
+
+```
+时间 | 发送人 | 文件名 | 处理耗时 | 处理结果
+```
+
+示例：
+
+```
+2026-06-01 21:33 | user=zhangsan | file=test.pdf | cost=3.2s | success
+```
 
 ## 测试策略
 
@@ -73,7 +114,9 @@ Railway (FastAPI)
 
 - 平台：Railway（免费额度）
 - 触发：连接 GitHub 仓库，自动部署
-- 环境变量：CorpID、Secret、Token、EncodingAESKey
+- 环境变量：CorpID、Secret、Token、EncodingAESKey、ALLOWED_USERS
+
+**可迁移性**：架构保持平台无关（FastAPI + pypdf + requests），后续如需长期运行，可无缝迁移至 Oracle Free Tier，无需修改业务逻辑。
 
 ## 企业微信配置
 
