@@ -2,6 +2,7 @@ package com.quark.watermark
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,7 +20,6 @@ import java.io.ByteArrayOutputStream
 class MainActivity : ComponentActivity() {
 
     private val remover = WatermarkRemover()
-    private var pendingShareUri: Uri? = null
 
     private val filePickerLauncher = registerForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -64,7 +64,12 @@ class MainActivity : ComponentActivity() {
 
     private fun handleShareIntent(intent: Intent?): Uri? {
         if (intent?.action == Intent.ACTION_SEND && intent.type == "application/pdf") {
-            return intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            }
         }
         return null
     }
