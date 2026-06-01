@@ -210,6 +210,10 @@ class MyClient(botpy.Client):
 
 def start_qq_bot():
     """启动 QQ 机器人"""
+    # 在线程中创建新的事件循环
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     # 事件订阅
     intents = botpy.Intents(public_messages=True)
 

@@ -15,8 +15,15 @@ async def root():
 async def startup_event():
     """启动时初始化"""
     print("=== 启动服务 ===")
-    print(f"QQ_APPID: {os.getenv('QQ_APPID', '未设置')}")
-    print(f"QQ_SECRET: {os.getenv('QQ_SECRET', '未设置')[:10]}...")
+    appid = os.getenv('QQ_APPID', '')
+    secret = os.getenv('QQ_SECRET', '')
+    print(f"QQ_APPID: '{appid}' (长度: {len(appid)})")
+    print(f"QQ_SECRET: '{secret[:10]}...' (长度: {len(secret)})" if secret else "QQ_SECRET: 未设置")
+
+    if not appid or not secret:
+        print("警告：QQ_APPID 或 QQ_SECRET 未设置，请在 Railway 环境变量中配置")
+        return
+
     print("正在启动 QQ 机器人...")
-    # 启动 QQ 机器人
+    # 启动 QQ 机器人（在线程中运行）
     asyncio.create_task(asyncio.to_thread(start_qq_bot))
