@@ -62,7 +62,9 @@ def _classify_error(e: Exception) -> str:
         return "失败-文件损坏"
     if "no pages" in msg or "page_count" in msg or "无内容" in msg:
         return "失败-PDF无内容"
-    if "path" in msg or "name too long" in msg or "路径过长" in msg:
+    if "permission" in msg or "denied" in msg or "占用" in msg or "另一个程序" in msg:
+        return "失败-文件被占用或无权限"
+    if "name too long" in msg or "filename too long" in msg or "文件名过长" in msg or "errno 36" in msg:
         return "失败-路径过长"
     # 兜底：未知错误
     raw = str(e)[:50]
@@ -76,6 +78,7 @@ class App(BaseClass):
         self.app_config = Config(config_path)
         self.files = []  # [(path, status_label, card_frame)]
         self.processing = False
+        self._closing = False
 
         self.title("夸克扫描王 PDF 去水印工具")
         self.geometry(f"{self.app_config.window_width}x{self.app_config.window_height}")
@@ -353,13 +356,14 @@ class App(BaseClass):
             filetypes=[("PDF 文件", "*.pdf")],
         )
         for f in files:
-            if f not in [p for p, _, _ in self.files]:
+            if f.lower().endswith(".pdf") and f not in [p for p, _, _ in self.files]:
                 self._add_file(f)
 
     # ── 文件卡片 ────────────────────────────────────────
     def _add_file(self, path: str):
         # 隐藏空列表占位
-        self.empty_label.pack_forget()
+        if self.empty_label is not None:
+            self.empty_label.pack_forget()
 
         card = ctk.CTkFrame(
             self.file_frame,
@@ -460,6 +464,7 @@ class App(BaseClass):
     def _clear_list(self):
         if self.processing:
             return
+        self.empty_label = None
         for widget in self.file_frame.winfo_children():
             widget.destroy()
         self.files.clear()
@@ -493,6 +498,9 @@ class App(BaseClass):
 
         skip = 0
         for i, (path, status_label, card) in enumerate(files_snapshot):
+            if self._closing:
+                return
+
             self.after(0, lambda sl=status_label: sl.configure(text="处理中", text_color=COLORS["processing"]))
 
             try:
@@ -519,6 +527,9 @@ class App(BaseClass):
             self.after(0, lambda p=progress: self.progress_bar.set(p))
             self.after(0, lambda i=i: self.status_label.configure(text=f"处理中 {i + 1}/{total}"))
 
+        if self._closing:
+            return
+
         def _finish():
             parts = [f"成功 {success}"]
             if skip:
@@ -530,14 +541,12 @@ class App(BaseClass):
             self.processing = False
             self.start_btn.configure(state="normal")
             self.clear_btn.configure(state="normal")
-            self.processing = False
-            self.start_btn.configure(state="normal")
-            self.clear_btn.configure(state="normal")
 
         self.after(0, _finish)
 
     # ── 关闭窗口 ────────────────────────────────────────
     def _on_close(self):
+        self._closing = True
         self.app_config.window_width = self.winfo_width()
         self.app_config.window_height = self.winfo_height()
         self.app_config.window_x = self.winfo_x()

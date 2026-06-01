@@ -32,7 +32,7 @@ def build():
 
     if result.returncode == 0:
         print("打包成功！")
-        print(f"EXE 位置: dist/夸克去水印.exe")
+        print(f"EXE 位置: dist/夸克去水印_v{VERSION}.exe")
     else:
         print("打包失败:")
         print(result.stderr)

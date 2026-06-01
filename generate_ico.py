@@ -18,13 +18,9 @@ def image_to_dib(img):
 
     for y in range(h - 1, -1, -1):  # BMP 从底部开始
         row = b''
-        and_row = b''
         for x in range(w):
             r, g, b, a = pixels[y * w + x]
             row += struct.pack('BBBB', b, g, r, a)  # BGRA 格式
-            # AND mask: 1 表示透明，0 表示不透明
-            and_row_bit = 1 if a < 128 else 0
-            # 每行的 AND mask 按 32 位对齐
         xor_mask += row + b'\x00' * padding
 
         # AND mask: 每像素 1 bit，行按 32 位（4 字节）对齐

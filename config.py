@@ -27,6 +27,9 @@ class Config:
                 self.window_height = data.get("window_height", self.window_height)
                 self.window_x = data.get("window_x")
                 self.window_y = data.get("window_y")
+                # 确保窗口尺寸不小于最小值
+                self.window_width = max(self.window_width, 560)
+                self.window_height = max(self.window_height, 560)
         except (json.JSONDecodeError, IOError):
             pass
 

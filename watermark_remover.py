@@ -1,4 +1,5 @@
 import os
+import re
 import fitz
 
 
@@ -37,15 +38,18 @@ def remove_watermark(input_path: str, output_path: str) -> bool:
 
     try:
         found = False
+        # 匹配水印命令模式：q ... /QuarkX2 Do Q
+        watermark_pattern = re.compile(rb'q\s+[\d\s]+cm\s+/QuarkX2\s+Do\s+Q')
         for page in doc:
             contents = page.get_contents()
             for xref in contents:
                 stream = doc.xref_stream(xref)
                 if stream and b"QuarkX2" in stream:
                     found = True
-                    lines = stream.split(b"\n")
-                    new_lines = [line for line in lines if b"QuarkX2" not in line]
-                    new_stream = b"\n".join(new_lines)
+                    # 使用正则移除水印命令，保留其他内容
+                    new_stream = watermark_pattern.sub(b'', stream)
+                    # 清理多余的空行
+                    new_stream = re.sub(rb'\n{3,}', b'\n\n', new_stream)
                     doc.update_stream(xref, new_stream)
 
         if not found:
