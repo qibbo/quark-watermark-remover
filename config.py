@@ -31,7 +31,7 @@ class Config:
             pass
 
     def save(self):
-        """保存配置到文件"""
+        """保存配置到文件（原子写入，先写临时文件再 rename）"""
         data = {
             "output_dir": self.output_dir,
             "window_width": self.window_width,
@@ -39,8 +39,10 @@ class Config:
             "window_x": self.window_x,
             "window_y": self.window_y,
         }
-        with open(self.config_path, "w", encoding="utf-8") as f:
+        tmp_path = self.config_path + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, self.config_path)
 
     def reset_output_dir(self):
         """重置输出目录为默认值"""

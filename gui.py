@@ -21,15 +21,16 @@ else:
 
 
 class App(BaseClass):
-    def __init__(self):
+    def __init__(self, config_path: str = "config.json"):
         super().__init__()
 
-        self.app_config = Config()
+        self.app_config = Config(config_path)
         self.files = []  # [(path, status_label)]
+        self.processing = False
 
         self.title("夸克扫描王 PDF 去水印工具")
         self.geometry(f"{self.app_config.window_width}x{self.app_config.window_height}")
-        if self.app_config.window_x and self.app_config.window_y:
+        if self.app_config.window_x is not None and self.app_config.window_y is not None:
             self.geometry(f"+{self.app_config.window_x}+{self.app_config.window_y}")
 
         self._setup_ui()
@@ -80,8 +81,10 @@ class App(BaseClass):
         btn_frame = ctk.CTkFrame(self)
         btn_frame.pack(fill="x", padx=10, pady=(0, 10))
 
-        ctk.CTkButton(btn_frame, text="开始去水印", command=self._start_process).pack(side="left", padx=5, fill="x", expand=True)
-        ctk.CTkButton(btn_frame, text="清空列表", fg_color="gray", command=self._clear_list).pack(side="left", padx=5)
+        self.start_btn = ctk.CTkButton(btn_frame, text="开始去水印", command=self._start_process)
+        self.start_btn.pack(side="left", padx=5, fill="x", expand=True)
+        self.clear_btn = ctk.CTkButton(btn_frame, text="清空列表", fg_color="gray", command=self._clear_list)
+        self.clear_btn.pack(side="left", padx=5)
 
     def _setup_dnd(self):
         """设置拖拽支持"""
@@ -138,6 +141,8 @@ class App(BaseClass):
 
     def _clear_list(self):
         """清空文件列表"""
+        if self.processing:
+            return
         for widget in self.file_frame.winfo_children():
             widget.destroy()
         self.files.clear()
@@ -146,23 +151,29 @@ class App(BaseClass):
 
     def _start_process(self):
         """开始处理（在新线程中运行）"""
-        if not self.files:
+        if not self.files or self.processing:
             return
 
+        self.processing = True
+        self.start_btn.configure(state="disabled")
+        self.clear_btn.configure(state="disabled")
         threading.Thread(target=self._process_files, daemon=True).start()
 
     def _process_files(self):
         """处理所有文件"""
-        total = len(self.files)
+        # 快照文件列表和输出目录，避免处理期间被修改
+        files_snapshot = list(self.files)
+        output_dir = self.app_config.output_dir
+        total = len(files_snapshot)
         success = 0
         fail = 0
 
-        for i, (path, status_label) in enumerate(self.files):
+        for i, (path, status_label) in enumerate(files_snapshot):
             # 更新状态为"转换中"
             self.after(0, lambda sl=status_label: sl.configure(text="转换中", text_color="blue"))
 
             try:
-                output_path = get_output_path(path, self.app_config.output_dir)
+                output_path = get_output_path(path, output_dir)
                 remove_watermark(path, output_path)
                 success += 1
                 self.after(0, lambda sl=status_label: sl.configure(text="已完成", text_color="green"))
@@ -176,8 +187,13 @@ class App(BaseClass):
             self.after(0, lambda p=progress: self.progress_bar.set(p))
             self.after(0, lambda i=i: self.status_label.configure(text=f"处理中 {i+1}/{total}..."))
 
-        # 完成
-        self.after(0, lambda: self.status_label.configure(text=f"完成！成功 {success} 个，失败 {fail} 个"))
+        # 完成，恢复按钮状态
+        def _finish():
+            self.status_label.configure(text=f"完成！成功 {success} 个，失败 {fail} 个")
+            self.processing = False
+            self.start_btn.configure(state="normal")
+            self.clear_btn.configure(state="normal")
+        self.after(0, _finish)
 
     def _on_close(self):
         """关闭窗口时保存配置"""

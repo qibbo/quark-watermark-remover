@@ -6,15 +6,19 @@ import os
 if sys.stdout:
     sys.stdout.reconfigure(encoding="utf-8")
 
-# 设置工作目录为脚本所在目录（打包后兼容）
+# 打包后切到 exe 所在目录，配置文件使用用户目录避免权限问题
 if getattr(sys, "frozen", False):
     os.chdir(os.path.dirname(sys.executable))
+
+CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".quark-watermark-remover")
+os.makedirs(CONFIG_DIR, exist_ok=True)
+CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 
 from gui import App
 
 
 def main():
-    app = App()
+    app = App(config_path=CONFIG_PATH)
     app.mainloop()
 
 

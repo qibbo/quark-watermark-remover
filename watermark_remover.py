@@ -15,21 +15,23 @@ def remove_watermark(input_path: str, output_path: str) -> bool:
     """
     doc = fitz.open(input_path)
 
-    for page in doc:
-        contents = page.get_contents()
-        for xref in contents:
-            stream = doc.xref_stream(xref)
-            if stream and b"QuarkX2" in stream:
-                lines = stream.split(b"\n")
-                new_lines = [line for line in lines if b"QuarkX2" not in line]
-                new_stream = b"\n".join(new_lines)
-                doc.update_stream(xref, new_stream)
+    try:
+        for page in doc:
+            contents = page.get_contents()
+            for xref in contents:
+                stream = doc.xref_stream(xref)
+                if stream and b"QuarkX2" in stream:
+                    lines = stream.split(b"\n")
+                    new_lines = [line for line in lines if b"QuarkX2" not in line]
+                    new_stream = b"\n".join(new_lines)
+                    doc.update_stream(xref, new_stream)
 
-    # 处理文件冲突
-    final_path = _resolve_conflict(output_path)
+        # 处理文件冲突
+        final_path = _resolve_conflict(output_path)
 
-    doc.save(final_path)
-    doc.close()
+        doc.save(final_path)
+    finally:
+        doc.close()
     return True
 
 

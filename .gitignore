@@ -4,3 +4,6 @@ dist/
 build/
 *.spec
 config.json
+.venv/
+build_env/
+测试文件/

@@ -19,9 +19,8 @@ python -m pytest tests/ -v
 python -m pytest tests/test_watermark_remover.py::test_remove_watermark_creates_output -v
 
 # 打包 EXE（必须在虚拟环境中，Anaconda 的 pathlib 包会与 PyInstaller 冲突）
-python -m venv build_env && source build_env/Scripts/activate
-pip install -r requirements.txt
-pyinstaller --onefile --windowed --exclude-module pathlib --name "夸克去水印" main.py
+# 首次使用：python -m venv .venv && source .venv/Scripts/activate && pip install -r requirements.txt
+pyinstaller --onefile --windowed --name "夸克去水印" main.py
 ```
 
 ## 架构
