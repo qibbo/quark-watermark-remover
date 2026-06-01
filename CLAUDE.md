@@ -48,6 +48,13 @@ python -m venv .venv
 - 输出文件命名：`原文件名_去水印.pdf`，冲突时自动加数字后缀 `(2)`、`(3)`...
 - 配置文件存储在用户目录 `~/.quark-watermark-remover/`，避免权限问题
 
+## 分支策略
+
+- `master` — 主分支，当前使用 pypdf 引擎（v1.4.0，EXE 约 13MB）
+- `legacy/pymupdf` — 归档分支，保留 PyMuPDF 引擎版本（v1.3.0，EXE 约 31MB）
+
+两个分支代码完全独立，互不干扰。需要查看或使用 PyMuPDF 版本时切换到 `legacy/pymupdf` 分支。
+
 ## ICO 图标生成注意事项
 
 - **不要使用 Pillow 的 `Image.save(format='ICO', append_images=...)`**，它只会保存第一个尺寸
