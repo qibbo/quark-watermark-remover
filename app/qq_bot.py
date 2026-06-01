@@ -101,7 +101,7 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
 
             # 延迟清理临时文件，等 QQ 服务器下载完成
             async def delayed_cleanup():
-                await asyncio.sleep(60)
+                await asyncio.sleep(300)
                 remove_temp_file(temp_file_id)
                 cleanup_temp_files(input_path, output_path)
             asyncio.create_task(delayed_cleanup())
