@@ -25,8 +25,8 @@ data class ProcessResult(
 @Composable
 fun ResultScreen(
     result: ProcessResult,
-    onSave: () -> Unit,
     onShare: () -> Unit,
+    onOpenDir: () -> Unit,
     onBack: () -> Unit
 ) {
     var saveMessage by remember { mutableStateOf<String?>(null) }
@@ -158,30 +158,30 @@ fun ResultScreen(
 
         // ── 操作按钮 ──
         Button(
-            onClick = {
-                onSave()
-                saveMessage = "已保存到 Downloads/夸克去水印/"
-            },
+            onClick = onShare,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Primary),
             shape = RoundedCornerShape(10.dp)
         ) {
-            Text("保存到本地", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("分享", fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedButton(
-            onClick = onShare,
+            onClick = {
+                onOpenDir()
+                saveMessage = "已保存到 Downloads/夸克去水印/"
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp),
             shape = RoundedCornerShape(10.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, Primary)
         ) {
-            Text("分享", fontSize = 14.sp, color = Primary)
+            Text("打开目录", fontSize = 14.sp, color = Primary)
         }
 
         Spacer(modifier = Modifier.height(8.dp))

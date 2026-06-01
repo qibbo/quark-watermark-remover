@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
                 var progress by remember { mutableStateOf(0f) }
                 var result by remember { mutableStateOf<ProcessResult?>(null) }
                 var savedUris by remember { mutableStateOf(listOf<Uri>()) }
+                var savedFileNames by remember { mutableStateOf(listOf<String>()) }
                 var showResult by remember { mutableStateOf(false) }
                 var sortAscending by remember { mutableStateOf(true) }
                 val scope = rememberCoroutineScope()
@@ -72,12 +73,20 @@ class MainActivity : ComponentActivity() {
                 if (showResult && result != null) {
                     ResultScreen(
                         result = result!!,
-                        onSave = {
-                            Toast.makeText(this@MainActivity, "已保存到 Downloads/夸克去水印/", Toast.LENGTH_SHORT).show()
-                        },
                         onShare = {
                             if (savedUris.isNotEmpty()) {
-                                shareFilesOneByOne(savedUris)
+                                FileUtils.sharePdf(this@MainActivity, savedUris, savedFileNames)
+                            }
+                        },
+                        onOpenDir = {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                type = "resource/folder"
+                                addCategory(Intent.CATEGORY_DEFAULT)
+                            }
+                            try {
+                                startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(this@MainActivity, "已保存到 Downloads/夸克去水印/", Toast.LENGTH_SHORT).show()
                             }
                         },
                         onBack = {
@@ -85,6 +94,7 @@ class MainActivity : ComponentActivity() {
                             files = emptyList()
                             result = null
                             savedUris = emptyList()
+                            savedFileNames = emptyList()
                             progress = 0f
                         }
                     )
@@ -106,6 +116,7 @@ class MainActivity : ComponentActivity() {
                                     files = output.files
                                     result = output.result
                                     savedUris = output.savedUris
+                                    savedFileNames = output.savedFileNames
                                     isProcessing = false
                                     showResult = true
                                 }
@@ -151,18 +162,6 @@ class MainActivity : ComponentActivity() {
 
     private val savedUriMap = mutableMapOf<Int, Uri>()
 
-    private fun shareFilesOneByOne(uris: List<Uri>) {
-        // 逐个分享，兼容微信等不支持多文件 PDF 的应用
-        for (uri in uris) {
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/pdf"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            startActivity(Intent.createChooser(intent, "分享 PDF"))
-        }
-    }
-
     private fun handleShareIntent(intent: Intent?): Uri? {
         if (intent?.action == Intent.ACTION_SEND && intent.type == "application/pdf") {
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -178,7 +177,8 @@ class MainActivity : ComponentActivity() {
     private data class ProcessOutput(
         val files: List<FileItem>,
         val result: ProcessResult,
-        val savedUris: List<Uri>
+        val savedUris: List<Uri>,
+        val savedFileNames: List<String>
     )
 
     private suspend fun processFiles(
@@ -188,6 +188,7 @@ class MainActivity : ComponentActivity() {
         val fileList = files.toMutableList()
         val failures = mutableListOf<Pair<String, String>>()
         val savedUriList = mutableListOf<Uri>()
+        val savedFileNameList = mutableListOf<String>()
         var successCount = 0
         var failCount = 0
         var skipCount = 0
@@ -227,6 +228,7 @@ class MainActivity : ComponentActivity() {
                         if (savedUri != null) {
                             fileList[i] = FileItem(files[i].name, FileStatus.SUCCESS)
                             savedUriList.add(savedUri)
+                            savedFileNameList.add(outName)
                             successCount++
                         } else {
                             fileList[i] = FileItem(files[i].name, FileStatus.FAIL)
@@ -247,7 +249,8 @@ class MainActivity : ComponentActivity() {
         return ProcessOutput(
             fileList,
             ProcessResult(successCount, failCount, skipCount, failures),
-            savedUriList
+            savedUriList,
+            savedFileNameList
         )
     }
 }
