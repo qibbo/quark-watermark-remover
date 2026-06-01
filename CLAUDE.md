@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 批量去除夸克扫描王非会员版 PDF 水印的桌面工具，打包为独立 EXE 发给同事使用。
 
+当前版本：v1.2.0（EXE 文件名包含版本号：`夸克去水印_v1.2.0.exe`）
+
 ## 常用命令
 
 ```bash
@@ -23,7 +25,7 @@ python -m pytest tests/test_watermark_remover.py::test_remove_watermark_creates_
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt pyinstaller
 
-# 打包
+# 打包（虚拟环境 .venv/ 已保留，后续直接运行）
 .venv/Scripts/python build.py
 ```
 
@@ -33,7 +35,7 @@ python -m venv .venv
 - `gui.py` — CustomTkinter 浅色精致界面，tkinterdnd2 拖拽支持，多线程批量处理，支持删除单个文件和排序
 - `config.py` — JSON 持久化配置（输出路径、窗口位置），存储在 `~/.quark-watermark-remover/config.json`
 - `main.py` — 入口，设置浅色模式，处理 windowed 模式下 stdout 为 None
-- `build.py` — PyInstaller 打包脚本，打包 logo 目录作为数据文件
+- `build.py` — PyInstaller 打包脚本，打包 logo 目录作为数据文件，`VERSION` 变量控制 EXE 文件名中的版本号
 
 ## 关键技术细节
 
