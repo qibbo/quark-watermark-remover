@@ -39,6 +39,27 @@ async def download_file(media_id: str, access_token: str) -> str:
 
     return temp_path
 
+async def upload_file(file_path: str, access_token: str) -> str:
+    """上传文件到企业微信"""
+    url = "https://qyapi.weixin.qq.com/cgi-bin/media/upload"
+    params = {
+        "access_token": access_token,
+        "type": "file"
+    }
+
+    with open(file_path, "rb") as f:
+        files = {"media": (os.path.basename(file_path), f)}
+        response = requests.post(url, params=params, files=files)
+
+    if response.status_code != 200:
+        raise Exception("文件上传失败")
+
+    result = response.json()
+    if "media_id" not in result:
+        raise Exception(f"上传失败: {result}")
+
+    return result["media_id"]
+
 @router.get("/callback")
 async def wechat_verify(
     msg_signature: str = Query(...),
