@@ -25,14 +25,15 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            processFiles(uris)
+            onFilesSelected(uris)
         }
     }
+
+    private var onFilesSelected: (List<Uri>) -> Unit = {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 处理从其他应用分享进来的 PDF
         val shareUri = handleShareIntent(intent)
 
         setContent {
@@ -41,10 +42,17 @@ class MainActivity : ComponentActivity() {
                 var result by remember { mutableStateOf<ProcessResult?>(null) }
                 val scope = rememberCoroutineScope()
 
-                // 如果从分享进入，自动处理
+                onFilesSelected = { uris ->
+                    scope.launch {
+                        val (newFiles, processResult) = processFiles(uris)
+                        files = newFiles
+                        result = processResult
+                    }
+                }
+
                 LaunchedEffect(shareUri) {
                     if (shareUri != null) {
-                        processFiles(listOf(shareUri))
+                        onFilesSelected(listOf(shareUri))
                     }
                 }
 
@@ -53,8 +61,8 @@ class MainActivity : ComponentActivity() {
                     onSelectFile = {
                         filePickerLauncher.launch(arrayOf("application/pdf"))
                     },
-                    onSave = { saveFiles() },
-                    onShare = { shareFiles() },
+                    onSave = { },
+                    onShare = { },
                     result = result,
                     onResultDismiss = { result = null }
                 )
@@ -74,26 +82,32 @@ class MainActivity : ComponentActivity() {
         return null
     }
 
-    private fun processFiles(uris: List<Uri>) {
-        val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.Main)
-        scope.launch {
-            val fileList = mutableListOf<FileItem>()
-            val failures = mutableListOf<Pair<String, String>>()
-            var successCount = 0
+    private suspend fun processFiles(uris: List<Uri>): Pair<List<FileItem>, ProcessResult> {
+        val fileList = mutableListOf<FileItem>()
+        val failures = mutableListOf<Pair<String, String>>()
+        var successCount = 0
 
-            for (uri in uris) {
-                val name = FileUtils.getFileNameFromUri(this@MainActivity, uri)
-                fileList.add(FileItem(name, FileStatus.PROCESSING))
+        for (uri in uris) {
+            val name = FileUtils.getFileNameFromUri(this, uri)
+            fileList.add(FileItem(name, FileStatus.PROCESSING))
 
-                val result = withContext(Dispatchers.IO) {
-                    val input = contentResolver.openInputStream(uri) ?: return@withContext
+            val pair = withContext(Dispatchers.IO) {
+                val input = contentResolver.openInputStream(uri)
+                if (input == null) {
+                    null
+                } else {
                     val output = ByteArrayOutputStream()
                     val r = remover.removeWatermark(input, output)
                     input.close()
                     r to output.toByteArray()
                 }
+            }
 
-                val (processResult, data) = result
+            if (pair == null) {
+                fileList[fileList.lastIndex] = FileItem(name, FileStatus.FAIL)
+                failures.add(name to "无法读取文件")
+            } else {
+                val (processResult, data) = pair
                 if (processResult.success) {
                     val outName = FileUtils.getOutputFileName(name)
                     val savedUri = withContext(Dispatchers.IO) {
@@ -111,17 +125,8 @@ class MainActivity : ComponentActivity() {
                     failures.add(name to (processResult.error ?: "未知错误"))
                 }
             }
-
-            files = fileList
-            result = ProcessResult(successCount, failures.size, failures)
         }
-    }
 
-    private fun saveFiles() {
-        // 文件已保存到 Downloads，提示用户
-    }
-
-    private fun shareFiles() {
-        // 分享第一个成功的文件
+        return fileList to ProcessResult(successCount, failures.size, failures)
     }
 }

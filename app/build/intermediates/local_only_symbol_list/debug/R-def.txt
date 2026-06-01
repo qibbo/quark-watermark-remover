@@ -1,0 +1,11 @@
+R_DEF: Internal format may change without notice
+local
+string app_name
+string confirm
+string processing
+string result_fail
+string result_success
+string result_title
+string save_local
+string select_pdf
+string share

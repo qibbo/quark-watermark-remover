@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">夸克去水印</string>
+    <string name="confirm">确定</string>
+    <string name="processing">处理中...</string>
+    <string name="result_fail">失败 %d 个</string>
+    <string name="result_success">成功 %d 个</string>
+    <string name="result_title">处理完成</string>
+    <string name="save_local">保存到本地</string>
+    <string name="select_pdf">选择 PDF 文件</string>
+    <string name="share">分享</string>
+</resources>

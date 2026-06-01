@@ -35,7 +35,7 @@ class WatermarkRemover {
 
                 // 获取页面内容流
                 val contents = page.getPdfObject()
-                    .getAsStream(PdfName.CONTENTS)
+                    .getAsStream(PdfName("Contents"))
 
                 if (contents != null) {
                     val data = contents.getBytes()
