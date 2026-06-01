@@ -8,26 +8,33 @@ from config import Config
 
 # 拖拽支持（可选依赖）
 try:
-    from tkinterdnd2 import DND_FILES
+    from tkinterdnd2 import TkinterDnD, DND_FILES
     HAS_DND = True
 except ImportError:
     HAS_DND = False
 
+# 根据是否有拖拽支持选择基类
+if HAS_DND:
+    BaseClass = TkinterDnD.Tk
+else:
+    BaseClass = ctk.CTk
 
-class App(ctk.CTk):
+
+class App(BaseClass):
     def __init__(self):
         super().__init__()
 
-        self.config = Config()
+        self.app_config = Config()
         self.files = []  # [(path, status_label)]
 
         self.title("夸克扫描王 PDF 去水印工具")
-        self.geometry(f"{self.config.window_width}x{self.config.window_height}")
-        if self.config.window_x and self.config.window_y:
-            self.geometry(f"+{self.config.window_x}+{self.config.window_y}")
+        self.geometry(f"{self.app_config.window_width}x{self.app_config.window_height}")
+        if self.app_config.window_x and self.app_config.window_y:
+            self.geometry(f"+{self.app_config.window_x}+{self.app_config.window_y}")
 
         self._setup_ui()
-        self._setup_dnd()
+        if HAS_DND:
+            self._setup_dnd()
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -54,7 +61,7 @@ class App(ctk.CTk):
 
         ctk.CTkLabel(path_frame, text="输出路径:").pack(side="left", padx=(5, 0))
 
-        self.path_var = ctk.StringVar(value=self.config.output_dir or "（原文件目录）")
+        self.path_var = ctk.StringVar(value=self.app_config.output_dir or "（原文件目录）")
         self.path_entry = ctk.CTkEntry(path_frame, textvariable=self.path_var)
         self.path_entry.pack(side="left", fill="x", expand=True, padx=5)
 
@@ -121,12 +128,12 @@ class App(ctk.CTk):
         """选择输出目录"""
         directory = filedialog.askdirectory(title="选择输出目录")
         if directory:
-            self.config.output_dir = directory
+            self.app_config.output_dir = directory
             self.path_var.set(directory)
 
     def _reset_output_dir(self):
         """重置输出目录"""
-        self.config.reset_output_dir()
+        self.app_config.reset_output_dir()
         self.path_var.set("（原文件目录）")
 
     def _clear_list(self):
@@ -155,7 +162,7 @@ class App(ctk.CTk):
             self.after(0, lambda sl=status_label: sl.configure(text="转换中", text_color="blue"))
 
             try:
-                output_path = get_output_path(path, self.config.output_dir)
+                output_path = get_output_path(path, self.app_config.output_dir)
                 remove_watermark(path, output_path)
                 success += 1
                 self.after(0, lambda sl=status_label: sl.configure(text="已完成", text_color="green"))
@@ -174,9 +181,9 @@ class App(ctk.CTk):
 
     def _on_close(self):
         """关闭窗口时保存配置"""
-        self.config.window_width = self.winfo_width()
-        self.config.window_height = self.winfo_height()
-        self.config.window_x = self.winfo_x()
-        self.config.window_y = self.winfo_y()
-        self.config.save()
+        self.app_config.window_width = self.winfo_width()
+        self.app_config.window_height = self.winfo_height()
+        self.app_config.window_x = self.winfo_x()
+        self.app_config.window_y = self.winfo_y()
+        self.app_config.save()
         self.destroy()
