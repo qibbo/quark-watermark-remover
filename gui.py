@@ -92,7 +92,7 @@ class App(BaseClass):
 
         self.title("夸克扫描王 PDF 去水印工具")
         self.geometry(f"{self.app_config.window_width}x{self.app_config.window_height}")
-        self.minsize(560, 560)
+        self.minsize(480, 560)
         if self.app_config.window_x is not None and self.app_config.window_y is not None:
             self.geometry(f"+{self.app_config.window_x}+{self.app_config.window_y}")
 

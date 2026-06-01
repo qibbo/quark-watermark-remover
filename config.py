@@ -8,7 +8,7 @@ class Config:
     def __init__(self, config_path: str = "config.json"):
         self.config_path = config_path
         self.output_dir: str = None
-        self.window_width: int = 600
+        self.window_width: int = 480
         self.window_height: int = 600
         self.window_x: int = None
         self.window_y: int = None
@@ -28,7 +28,7 @@ class Config:
                 self.window_x = data.get("window_x")
                 self.window_y = data.get("window_y")
                 # 确保窗口尺寸不小于最小值
-                self.window_width = max(self.window_width, 560)
+                self.window_width = max(self.window_width, 480)
                 self.window_height = max(self.window_height, 560)
         except (json.JSONDecodeError, IOError):
             pass
