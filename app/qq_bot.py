@@ -55,8 +55,8 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
                     reader = PdfReader(output_path)
                     writer = PdfWriter()
                     for page in reader.pages:
-                        page.compress_content_streams()
                         writer.add_page(page)
+                    writer.compress_content_streams()
                     with open(compressed_path, "wb") as f:
                         writer.write(f)
                     compressed_size = os.path.getsize(compressed_path)
