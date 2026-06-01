@@ -29,47 +29,9 @@ async def download_file(url: str) -> str:
     return temp_path
 
 
-async def upload_file(file_path: str, openid: str, message: C2CMessage) -> str:
-    """上传文件到 QQ，使用 botpy 内置 token 管理"""
-    http = message._api._http
-    token = http._token
-
-    await token.check_token()
-    auth_string = token.get_string()
-
-    url = f"https://api.sgroup.qq.com/v2/users/{openid}/files"
-    headers = {
-        "Authorization": auth_string,
-        "Content-Type": "application/json",
-    }
-    with open(file_path, "rb") as f:
-        file_data = base64.b64encode(f.read()).decode("utf-8")
-
-    payload = {
-        "file_type": 4,  # 文件
-        "file_data": file_data,
-        "srv_send_msg": False,
-    }
-    response = requests.post(url, headers=headers, json=payload)
-
-    if response.status_code != 200:
-        raise Exception(f"文件上传失败: {response.text}")
-
-    result = response.json()
-    return result.get("file_info", "")
-
-
 async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
     """处理 PDF 并发送"""
     try:
-        # 先回复收到
-        await message._api.post_c2c_message(
-            openid=message.author.user_openid,
-            msg_type=0,
-            content=f"收到 {file_name}，正在处理...",
-            msg_id=message.id
-        )
-
         # 下载文件
         input_path = await download_file(file_url)
 
@@ -81,13 +43,27 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
             # 上传文件
             file_info = await upload_file(output_path, message.author.user_openid, message)
 
-            # 发送文件消息
-            await message._api.post_c2c_message(
-                openid=message.author.user_openid,
-                msg_type=7,
-                media={"file_info": file_info},
-                msg_id=message.id
-            )
+            # 发送文件消息（srv_send_msg=True 直接发送）
+            http = message._api._http
+            token = http._token
+            await token.check_token()
+
+            url = f"https://api.sgroup.qq.com/v2/users/{message.author.user_openid}/files"
+            headers = {
+                "Authorization": token.get_string(),
+                "Content-Type": "application/json",
+            }
+            with open(output_path, "rb") as f:
+                file_data = base64.b64encode(f.read()).decode("utf-8")
+
+            payload = {
+                "file_type": 4,
+                "file_data": file_data,
+                "srv_send_msg": True,
+            }
+            response = requests.post(url, headers=headers, json=payload)
+            if response.status_code != 200:
+                raise Exception(f"文件发送失败: {response.text}")
 
             _log.info(f"处理成功: {file_name}, 耗时: {result['cost']}s")
         else:
