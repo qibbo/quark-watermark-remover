@@ -1,16 +1,20 @@
 package com.quark.watermark.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.quark.watermark.ui.theme.*
 
 data class FileItem(
@@ -19,17 +23,18 @@ data class FileItem(
 )
 
 enum class FileStatus {
-    PENDING, PROCESSING, SUCCESS, FAIL
+    PENDING, PROCESSING, SUCCESS, FAIL, SKIPPED
 }
 
 @Composable
 fun HomeScreen(
     files: List<FileItem>,
+    isProcessing: Boolean,
+    progress: Float,
     onSelectFile: () -> Unit,
-    onSave: () -> Unit,
-    onShare: () -> Unit,
-    result: ProcessResult?,
-    onResultDismiss: () -> Unit
+    onStartProcess: () -> Unit,
+    onClearList: () -> Unit,
+    onRemoveFile: (Int) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -37,109 +42,209 @@ fun HomeScreen(
             .background(Background)
             .padding(16.dp)
     ) {
-        // 标题
+        // ── 标题 ──
         Text(
             text = "夸克去水印",
-            style = MaterialTheme.typography.headlineMedium,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 选择文件按钮
-        Button(
-            onClick = onSelectFile,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Primary),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("📄 选择 PDF 文件", modifier = Modifier.padding(vertical = 8.dp))
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 文件列表
-        if (files.isNotEmpty()) {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+        // ── 选择文件区 ──
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !isProcessing) { onSelectFile() },
+            shape = RoundedCornerShape(10.dp),
+            colors = CardDefaults.cardColors(containerColor = DropZoneBg),
+            border = androidx.compose.foundation.BorderStroke(1.dp, DropBorder)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                items(files) { file ->
-                    FileCard(file)
-                }
-            }
-        } else {
-            Box(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("暂无文件", color = TextSecondary)
+                Text("📄", fontSize = 28.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "点击选择 PDF 文件",
+                    fontSize = 13.sp,
+                    color = TextSecondary
+                )
             }
         }
 
-        // 底部按钮
-        if (files.any { it.status == FileStatus.SUCCESS }) {
-            Row(
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ── 文件列表标题 ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (files.isEmpty()) "文件列表" else "文件列表（${files.size}）",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // ── 文件列表 ──
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
+        ) {
+            if (files.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "暂无文件，请点击上方选择 PDF",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.padding(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    itemsIndexed(files) { index, file ->
+                        FileCard(
+                            file = file,
+                            onRemove = if (!isProcessing) { { onRemoveFile(index) } } else null
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ── 进度条 ──
+        Column {
+            LinearProgressIndicator(
+                progress = progress,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = Primary,
+                trackColor = ProgressBg,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = when {
+                    isProcessing -> "处理中 ${(progress * files.size).toInt()}/${files.size}"
+                    progress >= 1f -> "完成"
+                    else -> "就绪"
+                },
+                fontSize = 12.sp,
+                color = TextSecondary,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ── 操作按钮 ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = onStartProcess,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp),
+                enabled = files.isNotEmpty() && !isProcessing,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Primary,
+                    disabledContainerColor = Primary.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(10.dp)
             ) {
-                OutlinedButton(
-                    onClick = onSave,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("保存到本地")
-                }
-                Button(
-                    onClick = onShare,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("分享")
-                }
+                Text("开始去水印", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+            OutlinedButton(
+                onClick = onClearList,
+                modifier = Modifier.height(44.dp),
+                enabled = files.isNotEmpty() && !isProcessing,
+                shape = RoundedCornerShape(10.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
+            ) {
+                Text("清空列表", fontSize = 13.sp, color = TextPrimary)
             }
         }
     }
 
-    // 结果弹窗
-    if (result != null) {
-        ResultDialog(result = result, onDismiss = onResultDismiss)
-    }
 }
 
 @Composable
-fun FileCard(file: FileItem) {
+fun FileCard(file: FileItem, onRemove: (() -> Unit)?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground)
+        shape = RoundedCornerShape(6.dp),
+        colors = CardDefaults.cardColors(containerColor = DropZoneBg),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            modifier = Modifier
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = file.name,
-                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 12.sp,
                 color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
+
             Text(
                 text = when (file.status) {
-                    FileStatus.PENDING -> "⏳ 等待"
-                    FileStatus.PROCESSING -> "⏳ 处理中"
-                    FileStatus.SUCCESS -> "✅ 完成"
-                    FileStatus.FAIL -> "❌ 失败"
+                    FileStatus.PENDING -> "待处理"
+                    FileStatus.PROCESSING -> "处理中"
+                    FileStatus.SUCCESS -> "完成"
+                    FileStatus.FAIL -> "失败"
+                    FileStatus.SKIPPED -> "无水印，跳过"
                 },
+                fontSize = 11.sp,
                 color = when (file.status) {
                     FileStatus.SUCCESS -> Success
                     FileStatus.FAIL -> Fail
                     FileStatus.PROCESSING -> Processing
+                    FileStatus.SKIPPED -> TextSecondary
                     else -> TextSecondary
-                }
+                },
+                modifier = Modifier.padding(horizontal = 4.dp)
             )
+
+            if (onRemove != null) {
+                Text(
+                    text = "✕",
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    modifier = Modifier
+                        .clickable { onRemove() }
+                        .padding(4.dp)
+                )
+            }
         }
     }
 }

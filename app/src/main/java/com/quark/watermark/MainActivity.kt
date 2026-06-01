@@ -40,16 +40,23 @@ class MainActivity : ComponentActivity() {
         setContent {
             QuarkWatermarkTheme {
                 var files by remember { mutableStateOf(listOf<FileItem>()) }
+                var isProcessing by remember { mutableStateOf(false) }
+                var progress by remember { mutableStateOf(0f) }
                 var result by remember { mutableStateOf<ProcessResult?>(null) }
                 var savedUris by remember { mutableStateOf(listOf<Uri>()) }
+                var showResult by remember { mutableStateOf(false) }
                 val scope = rememberCoroutineScope()
 
                 onFilesSelected = { uris ->
-                    scope.launch {
-                        val (newFiles, processResult, uris) = processFiles(uris)
-                        files = newFiles
-                        result = processResult
-                        savedUris = uris
+                    val newFiles = uris.map { uri ->
+                        val name = FileUtils.getFileNameFromUri(this@MainActivity, uri)
+                        FileItem(name, FileStatus.PENDING)
+                    }
+                    files = files + newFiles
+                    // 保存 URI 映射
+                    savedUriMap.clear()
+                    uris.forEachIndexed { index, uri ->
+                        savedUriMap[files.size - uris.size + index] = uri
                     }
                 }
 
@@ -59,25 +66,67 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                HomeScreen(
-                    files = files,
-                    onSelectFile = {
-                        filePickerLauncher.launch(arrayOf("application/pdf"))
-                    },
-                    onSave = {
-                        Toast.makeText(this@MainActivity, "文件已保存到 Downloads/夸克去水印/", Toast.LENGTH_SHORT).show()
-                    },
-                    onShare = {
-                        if (savedUris.isNotEmpty()) {
-                            FileUtils.sharePdf(this@MainActivity, savedUris.first())
+                if (showResult && result != null) {
+                    ResultScreen(
+                        result = result!!,
+                        onSave = {
+                            Toast.makeText(this@MainActivity, "已保存到 Downloads/夸克去水印/", Toast.LENGTH_SHORT).show()
+                        },
+                        onShare = {
+                            if (savedUris.isNotEmpty()) {
+                                FileUtils.sharePdf(this@MainActivity, savedUris.first())
+                            }
+                        },
+                        onBack = {
+                            showResult = false
+                            files = emptyList()
+                            result = null
+                            savedUris = emptyList()
+                            progress = 0f
                         }
-                    },
-                    result = result,
-                    onResultDismiss = { result = null }
-                )
+                    )
+                } else {
+                    HomeScreen(
+                        files = files,
+                        isProcessing = isProcessing,
+                        progress = progress,
+                        onSelectFile = {
+                            filePickerLauncher.launch(arrayOf("application/pdf"))
+                        },
+                        onStartProcess = {
+                            if (files.isNotEmpty() && !isProcessing) {
+                                scope.launch {
+                                    isProcessing = true
+                                    val output = processFiles(files) { current, total ->
+                                        progress = current.toFloat() / total
+                                    }
+                                    files = output.files
+                                    result = output.result
+                                    savedUris = output.savedUris
+                                    isProcessing = false
+                                    showResult = true
+                                }
+                            }
+                        },
+                        onClearList = {
+                            if (!isProcessing) {
+                                files = emptyList()
+                                progress = 0f
+                                savedUriMap.clear()
+                            }
+                        },
+                        onRemoveFile = { index ->
+                            if (!isProcessing) {
+                                files = files.toMutableList().also { it.removeAt(index) }
+                            }
+                        }
+                    )
+                }
             }
         }
     }
+
+    private val savedUriMap = mutableMapOf<Int, Uri>()
 
     private fun handleShareIntent(intent: Intent?): Uri? {
         if (intent?.action == Intent.ACTION_SEND && intent.type == "application/pdf") {
@@ -97,15 +146,21 @@ class MainActivity : ComponentActivity() {
         val savedUris: List<Uri>
     )
 
-    private suspend fun processFiles(uris: List<Uri>): ProcessOutput {
-        val fileList = mutableListOf<FileItem>()
+    private suspend fun processFiles(
+        files: List<FileItem>,
+        onProgress: (Int, Int) -> Unit
+    ): ProcessOutput {
+        val fileList = files.toMutableList()
         val failures = mutableListOf<Pair<String, String>>()
         val savedUriList = mutableListOf<Uri>()
         var successCount = 0
+        var failCount = 0
+        var skipCount = 0
+        val total = files.size
 
-        for (uri in uris) {
-            val name = FileUtils.getFileNameFromUri(this, uri)
-            fileList.add(FileItem(name, FileStatus.PROCESSING))
+        for (i in files.indices) {
+            val uri = savedUriMap[i] ?: continue
+            fileList[i] = FileItem(files[i].name, FileStatus.PROCESSING)
 
             val pair = withContext(Dispatchers.IO) {
                 val input = contentResolver.openInputStream(uri)
@@ -120,30 +175,44 @@ class MainActivity : ComponentActivity() {
             }
 
             if (pair == null) {
-                fileList[fileList.lastIndex] = FileItem(name, FileStatus.FAIL)
-                failures.add(name to "无法读取文件")
+                fileList[i] = FileItem(files[i].name, FileStatus.FAIL)
+                failures.add(files[i].name to "无法读取文件")
+                failCount++
             } else {
                 val (processResult, data) = pair
                 if (processResult.success) {
-                    val outName = FileUtils.getOutputFileName(name)
-                    val savedUri = withContext(Dispatchers.IO) {
-                        FileUtils.saveToDownloads(this@MainActivity, outName, data)
-                    }
-                    if (savedUri != null) {
-                        fileList[fileList.lastIndex] = FileItem(name, FileStatus.SUCCESS)
-                        savedUriList.add(savedUri)
-                        successCount++
+                    if (!processResult.hasWatermark) {
+                        fileList[i] = FileItem(files[i].name, FileStatus.SKIPPED)
+                        skipCount++
                     } else {
-                        fileList[fileList.lastIndex] = FileItem(name, FileStatus.FAIL)
-                        failures.add(name to "保存失败")
+                        val outName = FileUtils.getOutputFileName(files[i].name)
+                        val savedUri = withContext(Dispatchers.IO) {
+                            FileUtils.saveToDownloads(this@MainActivity, outName, data)
+                        }
+                        if (savedUri != null) {
+                            fileList[i] = FileItem(files[i].name, FileStatus.SUCCESS)
+                            savedUriList.add(savedUri)
+                            successCount++
+                        } else {
+                            fileList[i] = FileItem(files[i].name, FileStatus.FAIL)
+                            failures.add(files[i].name to "保存失败")
+                            failCount++
+                        }
                     }
                 } else {
-                    fileList[fileList.lastIndex] = FileItem(name, FileStatus.FAIL)
-                    failures.add(name to (processResult.error ?: "未知错误"))
+                    fileList[i] = FileItem(files[i].name, FileStatus.FAIL)
+                    failures.add(files[i].name to (processResult.error ?: "未知错误"))
+                    failCount++
                 }
             }
+
+            onProgress(i + 1, total)
         }
 
-        return ProcessOutput(fileList, ProcessResult(successCount, failures.size, failures), savedUriList)
+        return ProcessOutput(
+            fileList,
+            ProcessResult(successCount, failCount, skipCount, failures),
+            savedUriList
+        )
     }
 }
