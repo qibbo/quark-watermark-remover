@@ -73,6 +73,7 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
                     raise Exception("未配置 SERVER_URL，请在 Railway 环境变量中设置")
 
             download_url = f"{server_url}/temp/{temp_file_id}"
+            _log.info(f"文件下载 URL: {download_url}")
 
             # 上传文件并直接发送（srv_send_msg=True）
             http = message._api._http

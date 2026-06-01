@@ -34,6 +34,11 @@ async def startup_event():
         print("警告：QQ_APPID 或 QQ_SECRET 未设置，请在 Railway 环境变量中配置")
         return
 
+    server_url = os.getenv("SERVER_URL", "")
+    domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+    print(f"SERVER_URL: '{server_url}'")
+    print(f"RAILWAY_PUBLIC_DOMAIN: '{domain}'")
+
     print("正在启动 QQ 机器人...")
     # 启动 QQ 机器人（在线程中运行）
     asyncio.create_task(asyncio.to_thread(start_qq_bot))
