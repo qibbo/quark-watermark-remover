@@ -1,76 +1,42 @@
-# 夸克扫描王 PDF 去水印工具
+# QuarkPDF 去水印 - Android 版
 
-批量去除夸克扫描王非会员版导出 PDF 中的水印，支持拖拽文件、批量处理。
+去除夸克扫描王 PDF 中的水印，纯本地处理，无需联网。
 
 ## 功能
 
-- 批量去除 PDF 中的 `QuarkX2` 水印
-- 支持拖拽文件添加（需 tkinterdnd2）
-- 支持删除单个文件、按文件名排序
-- 自定义输出目录，文件名冲突自动加数字后缀
-- 智能错误提示（无水印跳过、文件损坏、加密等）
-- 窗口位置和大小自动记忆
-- 浅色精致界面，Win7 及以上兼容
+- 选择 PDF 文件，一键去除水印
+- 纯本地处理，不上传任何文件
+- 处理后可保存或分享给其他应用
 
-## 使用方式
+## 技术方案
 
-### 直接运行
+- 语言：Kotlin
+- PDF 库：Apache PDFBox for Android
+- 核心逻辑：解析 PDF 内容流，正则匹配并移除 `QuarkX2` 水印指令
 
-```bash
-# 安装依赖
-pip install -r requirements.txt
+## 核心逻辑参考
 
-# 运行
-python main.py
+`watermark_remover.py` 中的 Python 实现：
+
+```python
+# 水印命令模式：q ... /QuarkX2 Do Q
+WATERMARK_PATTERN = re.compile(rb'q\s+[\d\s]+cm\s+/QuarkX2\s+Do\s+Q')
+
+# 遍历每页的内容流，移除水印命令
+for page in reader.pages:
+    data = stream.get_data()
+    if b'QuarkX2' in data:
+        new_data = WATERMARK_PATTERN.sub(b'', data)
+        stream.set_data(new_data)
 ```
 
-### 打包为 EXE
+Kotlin 实现需要：
+1. 用 PDFBox 读取 PDF
+2. 遍历每页的 ContentStream
+3. 正则匹配 `q\s+[\d\s]+cm\s+/QuarkX2\s+Do\s+Q`
+4. 移除匹配内容
+5. 保存新 PDF
 
-```bash
-# 必须在虚拟环境中打包（Anaconda 的 pathlib 与 PyInstaller 冲突）
-# 首次使用：创建虚拟环境并安装依赖
-python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt pyinstaller
+## 状态
 
-# 打包
-.venv/Scripts/python build.py
-```
-
-打包完成后，EXE 文件位于 `dist/夸克去水印_v{版本号}.exe`。
-
-## 项目结构
-
-```
-├── main.py              # 程序入口
-├── gui.py               # GUI 界面（CustomTkinter + 拖拽支持）
-├── watermark_remover.py # 核心去水印逻辑（pypdf）
-├── config.py            # 配置管理（JSON 持久化）
-├── build.py             # PyInstaller 打包脚本
-├── generate_ico.py      # ICO 图标生成脚本
-├── requirements.txt     # 依赖列表
-├── logo/
-│   ├── logo.png         # 原始图标
-│   └── logo.ico         # 生成的 ICO
-└── tests/
-    ├── test_watermark_remover.py
-    └── test_config.py
-```
-
-## 错误处理
-
-| 场景 | 显示 |
-|------|------|
-| 处理成功 | 绿色「完成」 |
-| 无水印（已处理过） | 灰色「无水印，跳过」 |
-| 文件已加密 | 红色「失败-文件已加密」 |
-| 文件损坏 | 红色「失败-文件损坏」 |
-| 非 PDF 文件 | 红色「失败-非PDF文件」 |
-| 磁盘空间不足 | 红色「失败-磁盘空间不足」 |
-| 其他错误 | 红色「未知错误：{信息摘要}」 |
-
-## 依赖
-
-- `customtkinter` — 现代化 tkinter 主题
-- `pypdf` — PDF 解析与修改（纯 Python，轻量级）
-- `pyinstaller` — 打包为独立 EXE
-- `tkinterdnd2` — 文件拖拽支持（可选）
+规划中...
