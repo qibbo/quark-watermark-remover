@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from app.wechat import router as wechat_router
-from app.qq_bot import start_qq_bot
+from app.qq_bot import start_qq_bot, get_temp_file, remove_temp_file
 import asyncio
 import os
 
@@ -10,6 +11,15 @@ app.include_router(wechat_router, prefix="/wechat")
 @app.get("/")
 async def root():
     return {"status": "ok"}
+
+
+@app.get("/temp/{file_id}")
+async def serve_temp_file(file_id: str):
+    """提供临时文件下载（用于 QQ 文件上传）"""
+    file_path = get_temp_file(file_id)
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="文件不存在或已过期")
+    return FileResponse(file_path, media_type="application/pdf", filename="processed.pdf")
 
 @app.on_event("startup")
 async def startup_event():

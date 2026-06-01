@@ -3,6 +3,7 @@ import asyncio
 import base64
 import tempfile
 import time
+import uuid
 import requests
 import botpy
 from botpy import logging
@@ -15,6 +16,26 @@ QQ_SECRET = os.getenv("QQ_SECRET", "")
 
 _log = logging.get_logger()
 
+# 临时文件存储，用于 URL 方式上传
+_temp_files = {}
+
+
+def register_temp_file(file_path: str) -> str:
+    """注册临时文件，返回文件 ID"""
+    file_id = str(uuid.uuid4())
+    _temp_files[file_id] = file_path
+    return file_id
+
+
+def get_temp_file(file_id: str) -> str | None:
+    """获取临时文件路径"""
+    return _temp_files.get(file_id)
+
+
+def remove_temp_file(file_id: str):
+    """删除临时文件记录"""
+    _temp_files.pop(file_id, None)
+
 
 async def download_file(url: str) -> str:
     """下载文件"""
@@ -23,7 +44,7 @@ async def download_file(url: str) -> str:
         raise Exception("文件下载失败")
 
     temp_dir = tempfile.gettempdir()
-    temp_path = os.path.join(temp_dir, "qq_file.pdf")
+    temp_path = os.path.join(temp_dir, f"qq_{uuid.uuid4().hex[:8]}.pdf")
     with open(temp_path, "wb") as f:
         f.write(response.content)
     return temp_path
@@ -31,6 +52,7 @@ async def download_file(url: str) -> str:
 
 async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
     """处理 PDF 并发送"""
+    temp_file_id = None
     try:
         # 下载文件
         input_path = await download_file(file_url)
@@ -40,25 +62,35 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
         result = await process_pdf(input_path, output_path)
 
         if result["success"]:
+            # 注册临时文件，通过 HTTP 端点提供下载
+            temp_file_id = register_temp_file(output_path)
+            server_url = os.getenv("SERVER_URL", "")
+            if not server_url:
+                domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+                if domain:
+                    server_url = f"https://{domain}"
+                else:
+                    raise Exception("未配置 SERVER_URL，请在 Railway 环境变量中设置")
+
+            download_url = f"{server_url}/temp/{temp_file_id}"
+
             # 上传文件并直接发送（srv_send_msg=True）
             http = message._api._http
             token = http._token
             await token.check_token()
 
-            url = f"https://api.sgroup.qq.com/v2/users/{message.author.user_openid}/files"
+            upload_url = f"https://api.sgroup.qq.com/v2/users/{message.author.user_openid}/files"
             headers = {
                 "Authorization": token.get_string(),
                 "Content-Type": "application/json",
             }
-            with open(output_path, "rb") as f:
-                file_data = base64.b64encode(f.read()).decode("utf-8")
 
             payload = {
                 "file_type": 4,
-                "file_data": file_data,
+                "url": download_url,
                 "srv_send_msg": True,
             }
-            response = requests.post(url, headers=headers, json=payload)
+            response = requests.post(upload_url, headers=headers, json=payload)
             if response.status_code != 200:
                 raise Exception(f"文件发送失败: {response.text}")
 
@@ -86,6 +118,9 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
             )
         except:
             pass
+    finally:
+        if temp_file_id:
+            remove_temp_file(temp_file_id)
 
 
 def cleanup_temp_files(*file_paths):
