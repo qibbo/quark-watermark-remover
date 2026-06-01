@@ -121,8 +121,8 @@ fun HomeScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.padding(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    modifier = Modifier.padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     itemsIndexed(files) { index, file ->
                         FileCard(
@@ -200,13 +200,13 @@ fun HomeScreen(
 fun FileCard(file: FileItem, onRemove: (() -> Unit)?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(6.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = DropZoneBg),
         border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 8.dp, vertical = 6.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp)
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically

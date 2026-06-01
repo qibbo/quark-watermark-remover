@@ -60,7 +60,7 @@ object FileUtils {
             context.startActivity(Intent.createChooser(intent, "分享 PDF"))
         } else {
             val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                type = "application/pdf"
+                type = "*/*"
                 putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
