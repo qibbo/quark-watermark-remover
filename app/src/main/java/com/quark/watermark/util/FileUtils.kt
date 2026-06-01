@@ -1,11 +1,8 @@
 package com.quark.watermark.util
 
-import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -69,21 +66,15 @@ object FileUtils {
 
     // ── 分享相关 ──────────────────────────────────────────
 
-    data class ShareApp(
-        val label: String,
-        val packageName: String,
-        val componentName: ComponentName,
-        val supportsMultiple: Boolean
-    )
-
     /**
-     * 智能分享：单文件直接分享，多文件优先多文件分享，不支持的自动打包 ZIP
+     * 智能分享：单文件直接分享 PDF，多文件自动打包 ZIP
+     * 微信/QQ 等应用不支持多 PDF 分享，统一用 ZIP 保证兼容性
      */
     fun sharePdf(context: Context, uris: List<Uri>, fileNames: List<String> = emptyList()) {
         if (uris.isEmpty()) return
 
         if (uris.size == 1) {
-            // 单文件：直接分享
+            // 单文件：直接分享 PDF
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "application/pdf"
                 putExtra(Intent.EXTRA_STREAM, uris.first())
@@ -93,24 +84,7 @@ object FileUtils {
             return
         }
 
-        // 多文件：查询支持情况
-        val multiApps = queryApps(context, Intent.ACTION_SEND_MULTIPLE, "application/pdf")
-        val singleApps = queryApps(context, Intent.ACTION_SEND, "application/pdf")
-
-        // 仅支持单文件的 App（需要打包 ZIP）
-        val singleOnlyApps = singleApps.filter { single ->
-            multiApps.none { multi ->
-                multi.packageName == single.packageName
-            }
-        }
-
-        if (singleOnlyApps.isEmpty()) {
-            // 所有 App 都支持多文件，直接分享
-            shareMultiplePdfs(context, uris)
-            return
-        }
-
-        // 有不支持多文件的 App，创建 ZIP 用于降级分享
+        // 多文件：打包 ZIP 分享，兼容所有应用（包括微信/QQ）
         val zipUri = createZipFromPdfs(context, uris, fileNames)
         if (zipUri == null) {
             // ZIP 创建失败，降级为逐个分享
@@ -118,50 +92,12 @@ object FileUtils {
             return
         }
 
-        // 构建自定义分享面板 Intent
-        val targetIntents = mutableListOf<Intent>()
-
-        // 多文件分享的 App
-        for (app in multiApps) {
-            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                type = "application/pdf"
-                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                component = app.componentName
-            }
-            targetIntents.add(intent)
-        }
-
-        // 仅支持单文件的 App → 分享 ZIP
-        for (app in singleOnlyApps) {
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/zip"
-                putExtra(Intent.EXTRA_STREAM, zipUri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                component = app.componentName
-            }
-            targetIntents.add(intent)
-        }
-
-        if (targetIntents.isEmpty()) {
-            // 没有可用 App，用系统默认 chooser
-            shareMultiplePdfs(context, uris)
-            return
-        }
-
-        // 使用第一个 Intent 作为 chooser 基础，其余作为替代
-        val chooserIntent = Intent.createChooser(targetIntents.removeAt(0), "分享 PDF")
-        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, targetIntents.toTypedArray())
-        context.startActivity(chooserIntent)
-    }
-
-    private fun shareMultiplePdfs(context: Context, uris: List<Uri>) {
-        val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-            type = "application/pdf"
-            putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/zip"
+            putExtra(Intent.EXTRA_STREAM, zipUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "分享 PDF"))
+        context.startActivity(Intent.createChooser(intent, "分享 ZIP"))
     }
 
     private fun shareOneByOne(context: Context, uris: List<Uri>) {
@@ -173,32 +109,6 @@ object FileUtils {
             }
             context.startActivity(Intent.createChooser(intent, "分享 PDF"))
         }
-    }
-
-    private fun queryApps(context: Context, action: String, mimeType: String): List<ShareApp> {
-        val intent = Intent(action).apply { type = mimeType }
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PackageManager.MATCH_ALL
-        } else {
-            0
-        }
-        val apps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(flags.toLong()))
-        } else {
-            @Suppress("DEPRECATION")
-            context.packageManager.queryIntentActivities(intent, flags)
-        }
-
-        return apps
-            .filter { it.activityInfo.packageName != context.packageName }
-            .map { info ->
-                ShareApp(
-                    label = info.loadLabel(context.packageManager).toString(),
-                    packageName = info.activityInfo.packageName,
-                    componentName = ComponentName(info.activityInfo.packageName, info.activityInfo.name),
-                    supportsMultiple = action == Intent.ACTION_SEND_MULTIPLE
-                )
-            }
     }
 
     private fun createZipFromPdfs(context: Context, uris: List<Uri>, fileNames: List<String>): Uri? {
