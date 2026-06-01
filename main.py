@@ -2,8 +2,9 @@
 import sys
 import os
 
-# 确保 UTF-8 输出
-sys.stdout.reconfigure(encoding="utf-8")
+# 确保 UTF-8 输出（windowed 模式下 stdout 为 None）
+if sys.stdout:
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # 设置工作目录为脚本所在目录（打包后兼容）
 if getattr(sys, "frozen", False):
