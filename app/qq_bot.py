@@ -3,14 +3,16 @@ import asyncio
 import tempfile
 import time
 import requests
-import qqbot
-from qqbot import *
-from qqbot.model.message import Message
+import botpy
+from botpy import logging
+from botpy.message import C2CMessage
 from app.pdf_processor import process_pdf
 
 # 配置
 QQ_APPID = os.getenv("QQ_APPID", "")
 QQ_SECRET = os.getenv("QQ_SECRET", "")
+
+_log = logging.get_logger()
 
 # access_token 缓存
 _token_cache = {
@@ -104,11 +106,16 @@ async def send_text_message(openid: str, content: str, msg_id: str):
     if response.status_code != 200:
         raise Exception(f"消息发送失败: {response.text}")
 
-async def process_and_send(openid: str, file_url: str, file_name: str, msg_id: str):
+async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
     """处理 PDF 并发送"""
     try:
         # 先回复收到
-        await send_text_message(openid, f"收到 {file_name}，正在处理...", msg_id)
+        await message._api.post_c2c_message(
+            openid=message.author.user_openid,
+            msg_type=0,
+            content=f"收到 {file_name}，正在处理...",
+            msg_id=message.id
+        )
 
         # 下载文件
         input_path = await download_file(file_url)
@@ -122,20 +129,34 @@ async def process_and_send(openid: str, file_url: str, file_name: str, msg_id: s
             file_info = await upload_file(output_path)
 
             # 发送文件
-            await send_file_message(openid, file_info, msg_id)
+            await message._api.post_c2c_file(
+                openid=message.author.user_openid,
+                file_type=1,
+                url=file_info
+            )
 
-            print(f"处理成功: {file_name}, 耗时: {result['cost']}s")
+            _log.info(f"处理成功: {file_name}, 耗时: {result['cost']}s")
         else:
-            await send_text_message(openid, f"处理失败: {result['error']}", msg_id)
-            print(f"处理失败: {file_name}, 错误: {result['error']}")
+            await message._api.post_c2c_message(
+                openid=message.author.user_openid,
+                msg_type=0,
+                content=f"处理失败: {result['error']}",
+                msg_id=message.id
+            )
+            _log.info(f"处理失败: {file_name}, 错误: {result['error']}")
 
         # 清理临时文件
         cleanup_temp_files(input_path, output_path)
 
     except Exception as e:
-        print(f"处理异常: {file_name}, 错误: {str(e)}")
+        _log.info(f"处理异常: {file_name}, 错误: {str(e)}")
         try:
-            await send_text_message(openid, f"处理异常: {str(e)}", msg_id)
+            await message._api.post_c2c_message(
+                openid=message.author.user_openid,
+                msg_type=0,
+                content=f"处理异常: {str(e)}",
+                msg_id=message.id
+            )
         except:
             pass
 
@@ -146,26 +167,15 @@ def cleanup_temp_files(*file_paths):
             try:
                 os.remove(file_path)
             except Exception as e:
-                print(f"清理文件失败 {file_path}: {e}")
+                _log.info(f"清理文件失败 {file_path}: {e}")
 
-def start_qq_bot():
-    """启动 QQ 机器人"""
-    # 事件订阅：GROUP_AND_C2C_EVENT (1 << 25)
-    intents = Intents(
-        group_and_c2c_event=True
-    )
+class MyClient(botpy.Client):
+    async def on_ready(self):
+        _log.info(f"robot 「{self.robot.name}」 on_ready!")
 
-    # 创建机器人实例
-    bot = Bot(intents=intents)
-
-    @bot.event_handler
-    async def on_ready():
-        print("QQ 机器人已启动")
-
-    @bot.event_handler
-    async def on_c2c_message_create(message):
+    async def on_c2c_message_create(self, message: C2CMessage):
         """处理单聊消息"""
-        print(f"收到消息: {message}")
+        _log.info(f"收到消息: {message}")
 
         # 检查是否有附件
         if hasattr(message, 'attachments') and message.attachments:
@@ -174,17 +184,17 @@ def start_qq_bot():
                     # 异步处理 PDF
                     asyncio.create_task(
                         process_and_send(
-                            message.author.user_openid,
+                            message,
                             attachment.url,
-                            attachment.filename,
-                            message.id
+                            attachment.filename
                         )
                     )
                 else:
-                    await send_text_message(
-                        message.author.user_openid,
-                        "请发送 PDF 文件",
-                        message.id
+                    await message._api.post_c2c_message(
+                        openid=message.author.user_openid,
+                        msg_type=0,
+                        content="请发送 PDF 文件",
+                        msg_id=message.id
                     )
         # 检查是否为富媒体消息
         elif hasattr(message, 'media') and message.media:
@@ -192,12 +202,19 @@ def start_qq_bot():
                 # 处理富媒体消息
                 asyncio.create_task(
                     process_and_send(
-                        message.author.user_openid,
+                        message,
                         message.media.url,
-                        "file.pdf",
-                        message.id
+                        "file.pdf"
                     )
                 )
 
+def start_qq_bot():
+    """启动 QQ 机器人"""
+    # 事件订阅
+    intents = botpy.Intents(public_messages=True)
+
+    # 创建机器人实例
+    client = MyClient(intents=intents)
+
     # 启动机器人
-    bot.run(QQ_APPID, QQ_SECRET)
+    client.run(appid=QQ_APPID, secret=QQ_SECRET)
