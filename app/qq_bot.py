@@ -3,6 +3,9 @@ import asyncio
 import tempfile
 import time
 import requests
+import qqbot
+from qqbot import *
+from qqbot.model.message import Message
 from app.pdf_processor import process_pdf
 
 # 配置
@@ -65,10 +68,10 @@ async def upload_file(file_path: str) -> str:
     result = response.json()
     return result.get("file_info", "")
 
-async def send_file_message(channel_id: str, file_info: str):
-    """发送文件消息"""
+async def send_file_message(openid: str, file_info: str, msg_id: str):
+    """发送文件消息（单聊）"""
     token = get_access_token()
-    url = f"https://api.sgroup.qq.com/channels/{channel_id}/messages"
+    url = f"https://api.sgroup.qq.com/v2/users/{openid}/messages"
     headers = {
         "Authorization": f"Bot {QQ_APPID}.{token}",
         "Content-Type": "application/json"
@@ -77,31 +80,36 @@ async def send_file_message(channel_id: str, file_info: str):
         "msg_type": 7,
         "media": {
             "file_info": file_info
-        }
+        },
+        "msg_id": msg_id
     }
     response = requests.post(url, headers=headers, json=data)
     if response.status_code != 200:
         raise Exception(f"消息发送失败: {response.text}")
 
-async def send_text_message(channel_id: str, content: str):
-    """发送文本消息"""
+async def send_text_message(openid: str, content: str, msg_id: str):
+    """发送文本消息（单聊）"""
     token = get_access_token()
-    url = f"https://api.sgroup.qq.com/channels/{channel_id}/messages"
+    url = f"https://api.sgroup.qq.com/v2/users/{openid}/messages"
     headers = {
         "Authorization": f"Bot {QQ_APPID}.{token}",
         "Content-Type": "application/json"
     }
     data = {
         "msg_type": 0,
-        "content": content
+        "content": content,
+        "msg_id": msg_id
     }
     response = requests.post(url, headers=headers, json=data)
     if response.status_code != 200:
         raise Exception(f"消息发送失败: {response.text}")
 
-async def process_and_send(channel_id: str, file_url: str, file_name: str):
+async def process_and_send(openid: str, file_url: str, file_name: str, msg_id: str):
     """处理 PDF 并发送"""
     try:
+        # 先回复收到
+        await send_text_message(openid, f"收到 {file_name}，正在处理...", msg_id)
+
         # 下载文件
         input_path = await download_file(file_url)
 
@@ -114,11 +122,11 @@ async def process_and_send(channel_id: str, file_url: str, file_name: str):
             file_info = await upload_file(output_path)
 
             # 发送文件
-            await send_file_message(channel_id, file_info)
+            await send_file_message(openid, file_info, msg_id)
 
             print(f"处理成功: {file_name}, 耗时: {result['cost']}s")
         else:
-            await send_text_message(channel_id, f"处理失败: {result['error']}")
+            await send_text_message(openid, f"处理失败: {result['error']}", msg_id)
             print(f"处理失败: {file_name}, 错误: {result['error']}")
 
         # 清理临时文件
@@ -126,6 +134,10 @@ async def process_and_send(channel_id: str, file_url: str, file_name: str):
 
     except Exception as e:
         print(f"处理异常: {file_name}, 错误: {str(e)}")
+        try:
+            await send_text_message(openid, f"处理异常: {str(e)}", msg_id)
+        except:
+            pass
 
 def cleanup_temp_files(*file_paths):
     """清理临时文件"""
@@ -138,6 +150,52 @@ def cleanup_temp_files(*file_paths):
 
 def start_qq_bot():
     """启动 QQ 机器人"""
-    print("QQ 机器人服务已初始化")
-    # 这里可以添加 WebSocket 监听逻辑
-    # QQ 机器人使用 WebSocket 接收消息
+    # 事件订阅
+    intents = Intents(
+        public_guild_messages=True,
+        public_messages=True
+    )
+
+    # 创建机器人实例
+    bot = Bot(intents=intents)
+
+    @bot.event_handler
+    async def on_ready():
+        print("QQ 机器人已启动")
+
+    @bot.event_handler
+    async def on_message(message: Message):
+        # 检查是否有附件
+        if message.attachments:
+            for attachment in message.attachments:
+                if attachment.content_type and "pdf" in attachment.content_type.lower():
+                    # 异步处理 PDF
+                    asyncio.create_task(
+                        process_and_send(
+                            message.author.id,
+                            attachment.url,
+                            attachment.filename,
+                            message.id
+                        )
+                    )
+                else:
+                    await send_text_message(
+                        message.author.id,
+                        "请发送 PDF 文件",
+                        message.id
+                    )
+        # 检查是否为富媒体消息
+        elif message.media:
+            if message.media.file_info:
+                # 处理富媒体消息
+                asyncio.create_task(
+                    process_and_send(
+                        message.author.id,
+                        message.media.url,
+                        "file.pdf",
+                        message.id
+                    )
+                )
+
+    # 启动机器人
+    bot.run(QQ_APPID, QQ_SECRET)
