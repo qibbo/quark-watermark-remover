@@ -3,6 +3,8 @@ import subprocess
 import sys
 import os
 
+VERSION = "1.2.0"
+
 
 def build():
     """打包为独立 EXE"""
@@ -10,7 +12,7 @@ def build():
         sys.executable, "-m", "PyInstaller",
         "--onefile",
         "--windowed",
-        "--name", "夸克去水印",
+        "--name", f"夸克去水印_v{VERSION}",
         "--hidden-import", "tkinter",
         "--hidden-import", "_tkinter",
         "--hidden-import", "tkinter.constants",

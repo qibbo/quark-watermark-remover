@@ -36,7 +36,7 @@ python -m venv .venv
 .venv/Scripts/python build.py
 ```
 
-打包完成后，EXE 文件位于 `dist/夸克去水印.exe`。
+打包完成后，EXE 文件位于 `dist/夸克去水印_v{版本号}.exe`。
 
 ## 项目结构
 
