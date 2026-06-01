@@ -1,5 +1,6 @@
 import os
 import asyncio
+import base64
 import tempfile
 import time
 import requests
@@ -28,7 +29,7 @@ async def download_file(url: str) -> str:
     return temp_path
 
 
-async def upload_file(file_path: str, message: C2CMessage) -> str:
+async def upload_file(file_path: str, openid: str, message: C2CMessage) -> str:
     """上传文件到 QQ，使用 botpy 内置 token 管理"""
     http = message._api._http
     token = http._token
@@ -36,13 +37,20 @@ async def upload_file(file_path: str, message: C2CMessage) -> str:
     await token.check_token()
     auth_string = token.get_string()
 
-    url = "https://api.sgroup.qq.com/v2/users/me/files"
+    url = f"https://api.sgroup.qq.com/v2/users/{openid}/files"
     headers = {
         "Authorization": auth_string,
+        "Content-Type": "application/json",
     }
     with open(file_path, "rb") as f:
-        files = {"file": (os.path.basename(file_path), f)}
-        response = requests.post(url, headers=headers, files=files)
+        file_data = base64.b64encode(f.read()).decode("utf-8")
+
+    payload = {
+        "file_type": 4,  # 文件
+        "file_data": file_data,
+        "srv_send_msg": False,
+    }
+    response = requests.post(url, headers=headers, json=payload)
 
     if response.status_code != 200:
         raise Exception(f"文件上传失败: {response.text}")
@@ -71,7 +79,7 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
 
         if result["success"]:
             # 上传文件
-            file_info = await upload_file(output_path, message)
+            file_info = await upload_file(output_path, message.author.user_openid, message)
 
             # 发送文件消息
             await message._api.post_c2c_message(
