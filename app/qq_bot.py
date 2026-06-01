@@ -42,33 +42,6 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
         result = await process_pdf(input_path, output_path)
 
         if result["success"]:
-            # 大文件压缩（QQ API payload 限制约 12MB）
-            send_path = output_path
-            file_size = os.path.getsize(output_path)
-            _log.info(f"处理后文件大小: {file_size} bytes")
-
-            if file_size > 10 * 1024 * 1024:
-                _log.info("文件超过 10MB，尝试压缩...")
-                compressed_path = output_path.replace(".pdf", "_compressed.pdf")
-                try:
-                    from pypdf import PdfReader, PdfWriter
-                    reader = PdfReader(output_path)
-                    writer = PdfWriter()
-                    for page in reader.pages:
-                        writer.add_page(page)
-                    writer.compress_content_streams()
-                    with open(compressed_path, "wb") as f:
-                        writer.write(f)
-                    compressed_size = os.path.getsize(compressed_path)
-                    _log.info(f"压缩后文件大小: {compressed_size} bytes")
-                    if compressed_size < file_size:
-                        send_path = compressed_path
-                    else:
-                        _log.info("压缩效果不明显，使用原文件")
-                        os.remove(compressed_path)
-                except Exception as e:
-                    _log.info(f"压缩失败: {e}")
-
             # 上传文件并直接发送
             http = message._api._http
             token = http._token
@@ -80,7 +53,7 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
                 "Content-Type": "application/json",
             }
 
-            with open(send_path, "rb") as f:
+            with open(output_path, "rb") as f:
                 file_data = base64.b64encode(f.read()).decode("utf-8")
 
             payload = {
@@ -118,10 +91,6 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
             pass
     finally:
         cleanup_temp_files(input_path, output_path)
-        # 清理可能的压缩文件
-        if output_path:
-            compressed = output_path.replace(".pdf", "_compressed.pdf")
-            cleanup_temp_files(compressed)
 
 
 def cleanup_temp_files(*file_paths):
