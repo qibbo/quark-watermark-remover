@@ -13,8 +13,12 @@ def build():
         "--name", "夸克去水印",
     ]
 
-    if os.path.exists("config.json"):
-        cmd.extend(["--add-data", "config.json;."])
+    if os.path.exists("logo/logo.ico"):
+        cmd.extend(["--icon", "logo/logo.ico"])
+
+    # 打包 logo 目录作为数据文件
+    if os.path.isdir("logo"):
+        cmd.extend(["--add-data", "logo;logo"])
 
     cmd.append("main.py")
 

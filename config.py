@@ -9,7 +9,7 @@ class Config:
         self.config_path = config_path
         self.output_dir: str = None
         self.window_width: int = 600
-        self.window_height: int = 500
+        self.window_height: int = 600
         self.window_x: int = None
         self.window_y: int = None
         self._load()

@@ -14,6 +14,10 @@ CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".quark-watermark-remover")
 os.makedirs(CONFIG_DIR, exist_ok=True)
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
 
+import customtkinter as ctk
+ctk.set_appearance_mode("light")
+ctk.set_default_color_theme("blue")
+
 from gui import App
 
 

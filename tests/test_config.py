@@ -15,7 +15,7 @@ def test_config_default_values(config_file):
     config = Config(config_file)
     assert config.output_dir is None
     assert config.window_width == 600
-    assert config.window_height == 500
+    assert config.window_height == 600
 
 
 def test_config_save_and_load(config_file):

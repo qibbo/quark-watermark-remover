@@ -20,20 +20,29 @@ python -m pytest tests/test_watermark_remover.py::test_remove_watermark_creates_
 
 # 打包 EXE（必须在虚拟环境中，Anaconda 的 pathlib 包会与 PyInstaller 冲突）
 # 首次使用：python -m venv .venv && source .venv/Scripts/activate && pip install -r requirements.txt
-pyinstaller --onefile --windowed --name "夸克去水印" main.py
+python build.py
 ```
 
 ## 架构
 
-- `watermark_remover.py` — 核心逻辑：解析 PDF 内容流，删除 `QuarkX2` 水印引用行
-- `gui.py` — CustomTkinter 界面，tkinterdnd2 拖拽支持，多线程批量处理
-- `config.py` — JSON 持久化配置（输出路径、窗口位置）
-- `main.py` — 入口，处理 windowed 模式下 stdout 为 None 的情况
-- `build.py` — PyInstaller 打包脚本
+- `watermark_remover.py` — 核心逻辑：解析 PDF 内容流，删除 `QuarkX2` 水印引用行；定义 `WatermarkNotFoundError`、`NotPdfFileError` 异常
+- `gui.py` — CustomTkinter 浅色精致界面，tkinterdnd2 拖拽支持，多线程批量处理，支持删除单个文件和排序
+- `config.py` — JSON 持久化配置（输出路径、窗口位置），存储在 `~/.quark-watermark-remover/config.json`
+- `main.py` — 入口，设置浅色模式，处理 windowed 模式下 stdout 为 None
+- `build.py` — PyInstaller 打包脚本，打包 logo 目录作为数据文件
 
 ## 关键技术细节
 
+- UI 设计：浅色精致风，配色方案定义在 `gui.py` 的 `COLORS` 字典中，使用微软雅黑字体
+- 错误处理：`watermark_remover.py` 先检查 PDF 文件头（`%PDF-`），再调用 PyMuPDF；`gui.py` 分类捕获异常显示友好中文提示
 - 水印识别：查找 PDF 页面内容流中的 `QuarkX2` 图片引用并删除对应行
 - GUI 类根据 tkinterdnd2 可用性动态选择基类（`TkinterDnD.Tk` 或 `ctk.CTk`）
 - `self.app_config` 而非 `self.config`，避免与 tkinter 内置 `config` 方法冲突
 - 输出文件命名：`原文件名_去水印.pdf`，冲突时自动加数字后缀 `(2)`、`(3)`...
+- 配置文件存储在用户目录 `~/.quark-watermark-remover/`，避免权限问题
+
+## ICO 图标生成注意事项
+
+- **不要使用 Pillow 的 `Image.save(format='ICO', append_images=...)`**，它只会保存第一个尺寸
+- **必须手动构建 ICO 文件**：使用 `generate_ico.py`，将每个尺寸编码为 BMP DIB 格式后拼接
+- **不要使用 `rcedit` 或 `UpdateResource` 修改 PyInstaller onefile EXE**，会丢失 overlay 数据导致 EXE 损坏

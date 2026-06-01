@@ -1,7 +1,7 @@
 import os
 import pytest
 import fitz
-from watermark_remover import remove_watermark
+from watermark_remover import remove_watermark, WatermarkNotFoundError
 
 
 @pytest.fixture
@@ -66,16 +66,14 @@ def test_remove_watermark_preserves_content(sample_pdf):
 
 
 def test_remove_watermark_no_watermark(tmp_path):
-    """测试无水印文件"""
+    """测试无水印文件应抛出 WatermarkNotFoundError"""
     pdf_path = tmp_path / "no_watermark.pdf"
     doc = fitz.open()
     page = doc.new_page()
-    # 先画点东西创建内容流
     shape = page.new_shape()
     shape.draw_rect(fitz.Rect(0, 0, 10, 10))
     shape.finish(color=(0, 0, 0))
     shape.commit()
-    # 替换为不含水印的内容流
     content = b"q\n0 0 0 RG\n/QuarkE1 gs q 535 0 0 841 29 66 cm /QuarkX1 Do Q\nQ\n"
     for xref in page.get_contents():
         doc.update_stream(xref, content)
@@ -83,15 +81,22 @@ def test_remove_watermark_no_watermark(tmp_path):
     doc.close()
 
     output_path = tmp_path / "no_watermark_去水印.pdf"
-    result = remove_watermark(str(pdf_path), str(output_path))
-    assert result is True  # 无水印也返回 True，标记为无需处理
+    with pytest.raises(WatermarkNotFoundError):
+        remove_watermark(str(pdf_path), str(output_path))
 
 
 def test_output_naming_conflict(tmp_path):
     """测试文件冲突时自动重命名"""
     pdf_path = tmp_path / "test.pdf"
     doc = fitz.open()
-    doc.new_page()
+    page = doc.new_page(width=595, height=907)
+    shape = page.new_shape()
+    shape.draw_rect(fitz.Rect(0, 0, 10, 10))
+    shape.finish(color=(0, 0, 0))
+    shape.commit()
+    content = b"q\n0 0 0 RG\n/QuarkE1 gs q 535 0 0 841 29 66 cm /QuarkX1 Do Q\nq 162 0 0 50 389 8 cm /QuarkX2 Do Q\nQ\n"
+    for xref in page.get_contents():
+        doc.update_stream(xref, content)
     doc.save(str(pdf_path))
     doc.close()
 
