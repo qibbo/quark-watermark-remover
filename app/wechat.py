@@ -5,7 +5,9 @@ import tempfile
 import os
 import time
 import hashlib
+import base64
 from datetime import datetime
+from Crypto.Cipher import AES
 from app.pdf_processor import process_pdf
 
 router = APIRouter()
@@ -215,16 +217,43 @@ async def wechat_verify(
 ):
     """企业微信 URL 验证"""
     token = os.getenv("WECHAT_TOKEN", "")
+    encoding_aes_key = os.getenv("WECHAT_ENCODING_AES_KEY", "")
+    corp_id = os.getenv("CORP_ID", "")
 
     # 签名验证：将 token、timestamp、nonce、echostr 排序后拼接，进行 SHA1 哈希
     params = sorted([token, timestamp, nonce, echostr])
     sign_str = "".join(params)
     sign = hashlib.sha1(sign_str.encode("utf-8")).hexdigest()
 
-    if sign == msg_signature:
-        return echostr
-    else:
+    if sign != msg_signature:
         return "签名验证失败"
+
+    # 解密 echostr
+    try:
+        # 将 EncodingAESKey 转换为 AES 密钥
+        aes_key = base64.b64decode(encoding_aes_key + "=")
+        iv = aes_key[:16]
+
+        # 解密
+        cipher = AES.new(aes_key, AES.MODE_CBC, iv)
+        plain_text = cipher.decrypt(base64.b64decode(echostr))
+
+        # 去除填充
+        pad_len = plain_text[-1]
+        content = plain_text[16:-pad_len]
+
+        # 提取消息和 corp_id
+        msg_len = int.from_bytes(content[:4], byteorder="big")
+        msg = content[4:4+msg_len].decode("utf-8")
+        from_corp_id = content[4+msg_len:].decode("utf-8")
+
+        # 验证 corp_id
+        if from_corp_id == corp_id:
+            return msg
+        else:
+            return "CorpID 验证失败"
+    except Exception as e:
+        return f"解密失败: {str(e)}"
 
 @router.post("/callback")
 async def wechat_callback(request: Request, background_tasks: BackgroundTasks):
