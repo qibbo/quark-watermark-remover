@@ -1,5 +1,8 @@
 from fastapi import APIRouter, Request, Query
 import xml.etree.ElementTree as ET
+import requests
+import tempfile
+import os
 
 router = APIRouter()
 
@@ -15,6 +18,26 @@ def parse_file_message(xml_data: str) -> dict:
         "file_name": root.find("FileName").text,
         "file_size": root.find("FileSize").text
     }
+
+async def download_file(media_id: str, access_token: str) -> str:
+    """下载企业微信文件"""
+    url = "https://qyapi.weixin.qq.com/cgi-bin/media/get"
+    params = {
+        "access_token": access_token,
+        "media_id": media_id
+    }
+    response = requests.get(url, params=params)
+
+    if response.status_code != 200:
+        raise Exception("文件下载失败")
+
+    # 使用 tempfile 创建临时文件
+    temp_dir = tempfile.gettempdir()
+    temp_path = os.path.join(temp_dir, f"{media_id}.pdf")
+    with open(temp_path, "wb") as f:
+        f.write(response.content)
+
+    return temp_path
 
 @router.get("/callback")
 async def wechat_verify(

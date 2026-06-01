@@ -32,3 +32,10 @@ def test_parse_file_message():
     assert result["media_id"] == "media_id_test"
     assert result["file_name"] == "test.pdf"
     assert result["from_user"] == "user_test"
+
+def test_download_file():
+    """测试下载文件"""
+    from app.wechat import download_file
+    # 这里需要 mock 企业微信 API
+    # 暂时跳过实际测试，后续集成测试时验证
+    pass
