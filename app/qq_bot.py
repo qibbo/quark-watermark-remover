@@ -98,6 +98,14 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
                 raise Exception(f"文件发送失败: {response.text}")
 
             _log.info(f"处理成功: {file_name}, 耗时: {result['cost']}s")
+
+            # 延迟清理临时文件，等 QQ 服务器下载完成
+            async def delayed_cleanup():
+                await asyncio.sleep(60)
+                remove_temp_file(temp_file_id)
+                cleanup_temp_files(input_path, output_path)
+            asyncio.create_task(delayed_cleanup())
+            return
         else:
             await message._api.post_c2c_message(
                 openid=message.author.user_openid,
@@ -121,7 +129,7 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
             )
         except:
             pass
-    finally:
+        # 失败时立即清理临时文件
         if temp_file_id:
             remove_temp_file(temp_file_id)
 
