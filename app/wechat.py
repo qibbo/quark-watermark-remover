@@ -60,6 +60,33 @@ async def upload_file(file_path: str, access_token: str) -> str:
 
     return result["media_id"]
 
+async def send_file_message(to_user: str, media_id: str, access_token: str) -> bool:
+    """发送文件消息给用户"""
+    url = "https://qyapi.weixin.qq.com/cgi-bin/message/send"
+    params = {
+        "access_token": access_token
+    }
+
+    data = {
+        "touser": to_user,
+        "msgtype": "file",
+        "agentid": int(os.getenv("AGENT_ID", "0")),
+        "file": {
+            "media_id": media_id
+        }
+    }
+
+    response = requests.post(url, params=params, json=data)
+
+    if response.status_code != 200:
+        raise Exception("消息发送失败")
+
+    result = response.json()
+    if result.get("errcode") != 0:
+        raise Exception(f"发送失败: {result}")
+
+    return True
+
 @router.get("/callback")
 async def wechat_verify(
     msg_signature: str = Query(...),

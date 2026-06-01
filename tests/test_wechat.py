@@ -46,3 +46,10 @@ def test_upload_file():
     # 这里需要 mock 企业微信 API
     # 暂时跳过实际测试，后续集成测试时验证
     pass
+
+def test_send_file_message():
+    """测试发送文件消息"""
+    from app.wechat import send_file_message
+    # 这里需要 mock 企业微信 API
+    # 暂时跳过实际测试，后续集成测试时验证
+    pass
