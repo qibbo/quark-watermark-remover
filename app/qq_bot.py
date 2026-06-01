@@ -150,10 +150,9 @@ def cleanup_temp_files(*file_paths):
 
 def start_qq_bot():
     """启动 QQ 机器人"""
-    # 事件订阅
+    # 事件订阅：GROUP_AND_C2C_EVENT (1 << 25)
     intents = Intents(
-        public_guild_messages=True,
-        public_messages=True
+        group_and_c2c_event=True
     )
 
     # 创建机器人实例
@@ -164,15 +163,18 @@ def start_qq_bot():
         print("QQ 机器人已启动")
 
     @bot.event_handler
-    async def on_message(message: Message):
+    async def on_c2c_message_create(message):
+        """处理单聊消息"""
+        print(f"收到消息: {message}")
+
         # 检查是否有附件
-        if message.attachments:
+        if hasattr(message, 'attachments') and message.attachments:
             for attachment in message.attachments:
-                if attachment.content_type and "pdf" in attachment.content_type.lower():
+                if hasattr(attachment, 'content_type') and attachment.content_type and "pdf" in attachment.content_type.lower():
                     # 异步处理 PDF
                     asyncio.create_task(
                         process_and_send(
-                            message.author.id,
+                            message.author.user_openid,
                             attachment.url,
                             attachment.filename,
                             message.id
@@ -180,17 +182,17 @@ def start_qq_bot():
                     )
                 else:
                     await send_text_message(
-                        message.author.id,
+                        message.author.user_openid,
                         "请发送 PDF 文件",
                         message.id
                     )
         # 检查是否为富媒体消息
-        elif message.media:
-            if message.media.file_info:
+        elif hasattr(message, 'media') and message.media:
+            if hasattr(message.media, 'file_info') and message.media.file_info:
                 # 处理富媒体消息
                 asyncio.create_task(
                     process_and_send(
-                        message.author.id,
+                        message.author.user_openid,
                         message.media.url,
                         "file.pdf",
                         message.id
