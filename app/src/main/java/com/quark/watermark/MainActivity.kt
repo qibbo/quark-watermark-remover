@@ -259,7 +259,7 @@ class MainActivity : ComponentActivity() {
 
         return ProcessOutput(
             fileList,
-            ProcessResult(successCount, failCount, skipCount, failures),
+            ProcessResult(successCount, failCount, skipCount, failures, fileList),
             processedDataList
         )
     }
