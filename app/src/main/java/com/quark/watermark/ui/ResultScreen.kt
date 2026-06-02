@@ -1,5 +1,6 @@
 package com.quark.watermark.ui
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +15,7 @@ import com.quark.watermark.ui.theme.*
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import kotlinx.coroutines.launch
 
 data class ProcessResult(
     val successCount: Int,
@@ -26,11 +28,16 @@ data class ProcessResult(
 fun ResultScreen(
     result: ProcessResult,
     hasSavedFiles: Boolean,
-    onShare: () -> Unit,
+    onShare: (List<Uri>, List<String>) -> Unit,
+    onSave: suspend () -> List<Uri>,
     onOpenDir: () -> Unit,
     onBack: () -> Unit
 ) {
     var saveMessage by remember { mutableStateOf<String?>(null) }
+    var isSaved by remember { mutableStateOf(false) }
+    var savedUris by remember { mutableStateOf(listOf<Uri>()) }
+    var isSaving by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -158,41 +165,101 @@ fun ResultScreen(
         }
 
         // ── 操作按钮 ──
-        Button(
-            onClick = {
-                if (hasSavedFiles) {
-                    onShare()
-                } else {
-                    saveMessage = "没有可分享的文件"
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (hasSavedFiles) Primary else Primary.copy(alpha = 0.5f)
-            ),
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Text("分享", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        }
+        if (hasSavedFiles) {
+            // 保存到本地
+            Button(
+                onClick = {
+                    if (!isSaving) {
+                        isSaving = true
+                        scope.launch {
+                            val uris = onSave()
+                            savedUris = uris
+                            isSaved = true
+                            isSaving = false
+                            saveMessage = "已保存到 Downloads/夸克去水印/"
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                shape = RoundedCornerShape(10.dp),
+                enabled = !isSaving
+            ) {
+                Text(
+                    if (isSaving) "保存中..." else "保存到本地",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedButton(
-            onClick = {
-                onOpenDir()
-                if (hasSavedFiles) {
-                    saveMessage = "已保存到 Downloads/夸克去水印/"
+            // 打开目录（仅保存后显示）
+            if (isSaved) {
+                OutlinedButton(
+                    onClick = onOpenDir,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Primary)
+                ) {
+                    Text("打开目录", fontSize = 14.sp, color = Primary)
                 }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp),
-            shape = RoundedCornerShape(10.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, if (hasSavedFiles) Primary else CardBorder)
-        ) {
-            Text("打开目录", fontSize = 14.sp, color = if (hasSavedFiles) Primary else TextSecondary)
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // 分享
+            OutlinedButton(
+                onClick = {
+                    if (!isSaving) {
+                        if (savedUris.isEmpty()) {
+                            // 先保存再分享
+                            isSaving = true
+                            scope.launch {
+                                val uris = onSave()
+                                savedUris = uris
+                                isSaved = true
+                                isSaving = false
+                                if (uris.isNotEmpty()) {
+                                    val names = uris.map { uri ->
+                                        uri.lastPathSegment?.substringAfterLast('/') ?: "file.pdf"
+                                    }
+                                    onShare(uris, names)
+                                }
+                            }
+                        } else {
+                            val names = savedUris.map { uri ->
+                                uri.lastPathSegment?.substringAfterLast('/') ?: "file.pdf"
+                            }
+                            onShare(savedUris, names)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+                shape = RoundedCornerShape(10.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Primary),
+                enabled = !isSaving
+            ) {
+                Text("分享", fontSize = 14.sp, color = Primary)
+            }
+        } else {
+            // 无文件可操作
+            Button(
+                onClick = { saveMessage = "没有可操作的文件" },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Primary.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("保存到本地", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))

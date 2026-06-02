@@ -45,8 +45,7 @@ class MainActivity : ComponentActivity() {
                 var isProcessing by remember { mutableStateOf(false) }
                 var progress by remember { mutableStateOf(0f) }
                 var result by remember { mutableStateOf<ProcessResult?>(null) }
-                var savedUris by remember { mutableStateOf(listOf<Uri>()) }
-                var savedFileNames by remember { mutableStateOf(listOf<String>()) }
+                var processedData by remember { mutableStateOf(listOf<Pair<String, ByteArray>>()) }
                 var showResult by remember { mutableStateOf(false) }
                 var sortAscending by remember { mutableStateOf(true) }
                 val scope = rememberCoroutineScope()
@@ -71,12 +70,23 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (showResult && result != null) {
-                    val hasSavedFiles = savedUris.isNotEmpty()
+                    val hasSavedFiles = processedData.isNotEmpty()
                     ResultScreen(
                         result = result!!,
                         hasSavedFiles = hasSavedFiles,
-                        onShare = {
-                            FileUtils.sharePdf(this@MainActivity, savedUris, savedFileNames, result!!.successCount)
+                        onShare = { uris, names ->
+                            FileUtils.sharePdf(this@MainActivity, uris, names, result!!.successCount)
+                        },
+                        onSave = {
+                            val uris = mutableListOf<Uri>()
+                            for ((name, data) in processedData) {
+                                val outName = FileUtils.getOutputFileName(name)
+                                val uri = withContext(Dispatchers.IO) {
+                                    FileUtils.saveToDownloads(this@MainActivity, outName, data)
+                                }
+                                if (uri != null) uris.add(uri)
+                            }
+                            uris
                         },
                         onOpenDir = {
                             val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -93,8 +103,7 @@ class MainActivity : ComponentActivity() {
                             showResult = false
                             files = emptyList()
                             result = null
-                            savedUris = emptyList()
-                            savedFileNames = emptyList()
+                            processedData = emptyList()
                             progress = 0f
                         }
                     )
@@ -115,8 +124,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                     files = output.files
                                     result = output.result
-                                    savedUris = output.savedUris
-                                    savedFileNames = output.savedFileNames
+                                    processedData = output.processedData
                                     isProcessing = false
                                     showResult = true
                                 }
@@ -177,8 +185,7 @@ class MainActivity : ComponentActivity() {
     private data class ProcessOutput(
         val files: List<FileItem>,
         val result: ProcessResult,
-        val savedUris: List<Uri>,
-        val savedFileNames: List<String>
+        val processedData: List<Pair<String, ByteArray>>
     )
 
     private suspend fun processFiles(
@@ -187,8 +194,7 @@ class MainActivity : ComponentActivity() {
     ): ProcessOutput {
         val fileList = files.toMutableList()
         val failures = mutableListOf<Pair<String, String>>()
-        val savedUriList = mutableListOf<Uri>()
-        val savedFileNameList = mutableListOf<String>()
+        val processedDataList = mutableListOf<Pair<String, ByteArray>>()
         var successCount = 0
         var failCount = 0
         var skipCount = 0
@@ -221,20 +227,9 @@ class MainActivity : ComponentActivity() {
                         fileList[i] = FileItem(files[i].name, FileStatus.SKIPPED)
                         skipCount++
                     } else {
-                        val outName = FileUtils.getOutputFileName(files[i].name)
-                        val savedUri = withContext(Dispatchers.IO) {
-                            FileUtils.saveToDownloads(this@MainActivity, outName, data)
-                        }
-                        if (savedUri != null) {
-                            fileList[i] = FileItem(files[i].name, FileStatus.SUCCESS)
-                            savedUriList.add(savedUri)
-                            savedFileNameList.add(outName)
-                            successCount++
-                        } else {
-                            fileList[i] = FileItem(files[i].name, FileStatus.FAIL)
-                            failures.add(files[i].name to "保存失败")
-                            failCount++
-                        }
+                        fileList[i] = FileItem(files[i].name, FileStatus.SUCCESS)
+                        processedDataList.add(files[i].name to data)
+                        successCount++
                     }
                 } else {
                     fileList[i] = FileItem(files[i].name, FileStatus.FAIL)
@@ -249,8 +244,7 @@ class MainActivity : ComponentActivity() {
         return ProcessOutput(
             fileList,
             ProcessResult(successCount, failCount, skipCount, failures),
-            savedUriList,
-            savedFileNameList
+            processedDataList
         )
     }
 }
