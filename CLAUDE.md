@@ -32,11 +32,16 @@ https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 ./gradlew <ta
 
 ## 版本管理
 
-**每次打包必须更新版本号：**
+**代码有变更时必须更新版本号，仅重新打包则不变：**
 
 1. 修改 `app/build.gradle.kts` 中的 `appVersionName`（如 "1.0.7" → "1.0.8"）
-2. 同步更新 `versionCode`（整数，每次 +1）
-3. APK 文件名自动包含版本号：`夸克去水印_v{version}-release.apk`
+2. 同步修改 `versionCode`（整数，每次 +1）
+3. 然后执行 `./gradlew assembleRelease`
+4. APK 文件名自动包含版本号：`夸克去水印_v{version}-release.apk`
+
+**规则：**
+- 有代码变更 → 必须更新版本号 → 再打包
+- 仅重新打包（无代码变更）→ 版本号不变
 
 ## 核心架构
 

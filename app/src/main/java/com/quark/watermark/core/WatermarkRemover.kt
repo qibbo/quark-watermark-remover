@@ -65,9 +65,11 @@ class WatermarkRemover {
     private fun classifyError(e: Exception): String {
         val msg = e.message?.lowercase() ?: ""
         return when {
-            "password" in msg || "encrypted" in msg -> "文件已加密"
-            "corrupt" in msg || "damaged" in msg -> "文件损坏"
-            "non" in msg && "pdf" in msg -> "非 PDF 文件"
+            "password" in msg || "encrypted" in msg || "加密" in msg -> "文件已加密"
+            "space" in msg || "disk" in msg || "空间" in msg -> "磁盘空间不足"
+            "corrupt" in msg || "broken" in msg || "damaged" in msg || "损坏" in msg || "cannot open" in msg -> "文件损坏"
+            "no pages" in msg || "page_count" in msg || "无内容" in msg -> "PDF无内容"
+            "path" in msg || "name too long" in msg || "路径过长" in msg -> "路径过长"
             else -> "未知错误: ${e.message?.take(50)}"
         }
     }
