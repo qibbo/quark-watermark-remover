@@ -71,12 +71,12 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (showResult && result != null) {
+                    val hasSavedFiles = savedUris.isNotEmpty()
                     ResultScreen(
                         result = result!!,
+                        hasSavedFiles = hasSavedFiles,
                         onShare = {
-                            if (savedUris.isNotEmpty()) {
-                                FileUtils.sharePdf(this@MainActivity, savedUris, savedFileNames)
-                            }
+                            FileUtils.sharePdf(this@MainActivity, savedUris, savedFileNames, result!!.successCount)
                         },
                         onOpenDir = {
                             val intent = Intent(Intent.ACTION_VIEW).apply {

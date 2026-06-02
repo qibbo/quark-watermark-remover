@@ -70,7 +70,7 @@ object FileUtils {
      * 智能分享：单文件直接分享 PDF，多文件自动打包 ZIP
      * 微信/QQ 等应用不支持多 PDF 分享，统一用 ZIP 保证兼容性
      */
-    fun sharePdf(context: Context, uris: List<Uri>, fileNames: List<String> = emptyList()) {
+    fun sharePdf(context: Context, uris: List<Uri>, fileNames: List<String> = emptyList(), count: Int = uris.size) {
         if (uris.isEmpty()) return
 
         if (uris.size == 1) {
@@ -85,7 +85,7 @@ object FileUtils {
         }
 
         // 多文件：打包 ZIP 分享，兼容所有应用（包括微信/QQ）
-        val zipUri = createZipFromPdfs(context, uris, fileNames)
+        val zipUri = createZipFromPdfs(context, uris, fileNames, count)
         if (zipUri == null) {
             // ZIP 创建失败，降级为逐个分享
             shareOneByOne(context, uris)
@@ -111,10 +111,10 @@ object FileUtils {
         }
     }
 
-    private fun createZipFromPdfs(context: Context, uris: List<Uri>, fileNames: List<String>): Uri? {
+    private fun createZipFromPdfs(context: Context, uris: List<Uri>, fileNames: List<String>, count: Int): Uri? {
         return try {
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())
-            val zipFileName = "去水印结果_${timestamp}.zip"
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val zipFileName = "去水印结果_共${count}个_${timestamp}.zip"
             val zipFile = File(context.cacheDir, zipFileName)
 
             ZipOutputStream(FileOutputStream(zipFile)).use { zipOut ->

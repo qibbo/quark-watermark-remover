@@ -25,6 +25,7 @@ data class ProcessResult(
 @Composable
 fun ResultScreen(
     result: ProcessResult,
+    hasSavedFiles: Boolean,
     onShare: () -> Unit,
     onOpenDir: () -> Unit,
     onBack: () -> Unit
@@ -158,11 +159,19 @@ fun ResultScreen(
 
         // ── 操作按钮 ──
         Button(
-            onClick = onShare,
+            onClick = {
+                if (hasSavedFiles) {
+                    onShare()
+                } else {
+                    saveMessage = "没有可分享的文件"
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Primary),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (hasSavedFiles) Primary else Primary.copy(alpha = 0.5f)
+            ),
             shape = RoundedCornerShape(10.dp)
         ) {
             Text("分享", fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -173,15 +182,17 @@ fun ResultScreen(
         OutlinedButton(
             onClick = {
                 onOpenDir()
-                saveMessage = "已保存到 Downloads/夸克去水印/"
+                if (hasSavedFiles) {
+                    saveMessage = "已保存到 Downloads/夸克去水印/"
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp),
             shape = RoundedCornerShape(10.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Primary)
+            border = androidx.compose.foundation.BorderStroke(1.dp, if (hasSavedFiles) Primary else CardBorder)
         ) {
-            Text("打开目录", fontSize = 14.sp, color = Primary)
+            Text("打开目录", fontSize = 14.sp, color = if (hasSavedFiles) Primary else TextSecondary)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
