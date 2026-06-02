@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Release 版本（需要 keystore 签名）
 ./gradlew assembleRelease
 
-# 运行测试
+# 运行测试（纯 JVM，无需模拟器或设备）
 ./gradlew test
 
 # 清理构建
@@ -80,6 +80,19 @@ Pattern.compile("q\\s+[\\d\\s\\.]+cm\\s+/QuarkX2\\s+Do\\s+Q")
 - **最低 SDK**: 26 (Android 8.0)
 - **目标 SDK**: 34 (Android 14)
 
+## 错误分类
+
+`WatermarkRemover.classifyError()` 将异常转为友好提示，与桌面版保持一致：
+
+| 关键词 | 提示 |
+|--------|------|
+| password/encrypted/加密 | 文件已加密 |
+| space/disk/空间 | 磁盘空间不足 |
+| corrupt/broken/damaged/损坏/cannot open | 文件损坏 |
+| no pages/page_count/无内容 | PDF无内容 |
+| path/name too long/路径过长 | 路径过长 |
+| 其他 | 未知错误: {前50字符} |
+
 ## 分享机制
 
 - 单文件：直接分享 PDF
@@ -95,6 +108,16 @@ Release 签名使用项目根目录的 keystore：
 - 密码: 见 `app/build.gradle.kts` 中的 `signingConfigs`
 
 **注意**: keystore 文件已加入 .gitignore，不应提交到版本控制。
+
+## 测试
+
+单元测试位于 `app/src/test/`，可在纯 JVM 上运行（无需 Android 设备）：
+
+```bash
+./gradlew test
+```
+
+测试用例覆盖：正常PDF、无水印、损坏文件、非PDF、空文件、加密PDF、多页PDF。
 
 ## 环境要求
 
