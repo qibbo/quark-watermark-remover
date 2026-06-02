@@ -74,38 +74,35 @@ fun ResultScreen(
             ) {
                 if (result.successCount > 0) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("✅", fontSize = 18.sp)
                         Text(
                             "${result.successCount}",
-                            fontSize = 18.sp,
+                            fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = Success
                         )
-                        Text("成功", fontSize = 11.sp, color = TextSecondary)
+                        Text("成功", fontSize = 12.sp, color = TextSecondary)
                     }
                 }
                 if (result.failCount > 0) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("❌", fontSize = 18.sp)
                         Text(
                             "${result.failCount}",
-                            fontSize = 18.sp,
+                            fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = Fail
                         )
-                        Text("失败", fontSize = 11.sp, color = TextSecondary)
+                        Text("失败", fontSize = 12.sp, color = TextSecondary)
                     }
                 }
                 if (result.skipCount > 0) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("⏭", fontSize = 18.sp)
                         Text(
                             "${result.skipCount}",
-                            fontSize = 18.sp,
+                            fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextSecondary
                         )
-                        Text("跳过", fontSize = 11.sp, color = TextSecondary)
+                        Text("跳过", fontSize = 12.sp, color = TextSecondary)
                     }
                 }
             }
@@ -193,7 +190,7 @@ fun ResultScreen(
                         Success else Fail
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // ── 操作按钮 ──
@@ -295,9 +292,12 @@ fun ResultScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        TextButton(onClick = onBack) {
+        TextButton(
+            onClick = onBack,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
             Text("返回", fontSize = 13.sp, color = TextSecondary)
         }
     }
@@ -317,18 +317,23 @@ private fun FileResultCard(file: FileItem) {
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = when (file.status) {
-                    FileStatus.SUCCESS -> "✅"
-                    FileStatus.FAIL -> "❌"
-                    FileStatus.SKIPPED -> "⏭"
-                    FileStatus.PROCESSING -> "⏳"
-                    FileStatus.PENDING -> "📄"
-                },
-                fontSize = 14.sp
+            // 状态指示器（圆点）
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(
+                        color = when (file.status) {
+                            FileStatus.SUCCESS -> Success
+                            FileStatus.FAIL -> Fail
+                            FileStatus.SKIPPED -> TextSecondary
+                            FileStatus.PROCESSING -> Processing
+                            FileStatus.PENDING -> CardBorder
+                        },
+                        shape = RoundedCornerShape(4.dp)
+                    )
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             Text(
                 text = file.name,
