@@ -89,15 +89,7 @@ class MainActivity : ComponentActivity() {
                             uris
                         },
                         onOpenDir = {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                type = "resource/folder"
-                                addCategory(Intent.CATEGORY_DEFAULT)
-                            }
-                            try {
-                                startActivity(intent)
-                            } catch (e: Exception) {
-                                Toast.makeText(this@MainActivity, "已保存到 Downloads/夸克去水印/", Toast.LENGTH_SHORT).show()
-                            }
+                            openDownloadsFolder()
                         },
                         onBack = {
                             showResult = false
@@ -180,6 +172,30 @@ class MainActivity : ComponentActivity() {
             }
         }
         return null
+    }
+
+    private fun openDownloadsFolder() {
+        try {
+            // 尝试打开 Downloads/夸克去水印/ 目录
+            val uri = Uri.parse("content://com.android.externalstorage.documents/document/primary%3ADownload%2F%E5%A4%B8%E5%85%8B%E5%8E%BB%E6%B0%B4%E5%8D%B0")
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "vnd.android.document/directory")
+                addCategory(Intent.CATEGORY_DEFAULT)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            try {
+                // 备选方案：打开 Downloads 根目录
+                val uri = Uri.parse("content://com.android.externalstorage.documents/document/primary%3ADownload")
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "vnd.android.document/directory")
+                    addCategory(Intent.CATEGORY_DEFAULT)
+                }
+                startActivity(intent)
+            } catch (e2: Exception) {
+                Toast.makeText(this, "已保存到 Downloads/夸克去水印/", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private data class ProcessOutput(

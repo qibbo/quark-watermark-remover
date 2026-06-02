@@ -150,7 +150,8 @@ fun ResultScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (saveMessage!!.contains("成功")) Success.copy(alpha = 0.1f)
+                    containerColor = if (saveMessage!!.contains("成功") || saveMessage!!.contains("已保存"))
+                        Success.copy(alpha = 0.1f)
                     else Fail.copy(alpha = 0.1f)
                 )
             ) {
@@ -158,7 +159,8 @@ fun ResultScreen(
                     text = saveMessage!!,
                     modifier = Modifier.padding(12.dp),
                     fontSize = 13.sp,
-                    color = if (saveMessage!!.contains("成功")) Success else Fail
+                    color = if (saveMessage!!.contains("成功") || saveMessage!!.contains("已保存"))
+                        Success else Fail
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -166,10 +168,10 @@ fun ResultScreen(
 
         // ── 操作按钮 ──
         if (hasSavedFiles) {
-            // 保存到本地
+            // 保存到本地（保存后禁用）
             Button(
                 onClick = {
-                    if (!isSaving) {
+                    if (!isSaving && !isSaved) {
                         isSaving = true
                         scope.launch {
                             val uris = onSave()
@@ -183,12 +185,18 @@ fun ResultScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(44.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSaved) Success else Primary
+                ),
                 shape = RoundedCornerShape(10.dp),
-                enabled = !isSaving
+                enabled = !isSaving && !isSaved
             ) {
                 Text(
-                    if (isSaving) "保存中..." else "保存到本地",
+                    when {
+                        isSaving -> "保存中..."
+                        isSaved -> "已保存"
+                        else -> "保存到本地"
+                    },
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
@@ -212,7 +220,7 @@ fun ResultScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // 分享
+            // 分享（保存后可用，或点击时自动保存）
             OutlinedButton(
                 onClick = {
                     if (!isSaving) {
