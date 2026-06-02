@@ -3,7 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-val appVersionName = "1.0.8"
+val appVersionName = "1.0.9"
 
 android {
     namespace = "com.quark.watermark"
@@ -15,7 +15,7 @@ android {
         applicationId = "com.quark.watermark"
         minSdk = 26
         targetSdk = 34
-        versionCode = 9
+        versionCode = 10
         versionName = appVersionName
     }
 
