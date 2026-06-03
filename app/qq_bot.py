@@ -3,6 +3,7 @@ import asyncio
 import tempfile
 import uuid
 import shutil
+import base64
 import requests
 import botpy
 from botpy import logging
@@ -104,13 +105,18 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
                 "Content-Type": "application/json",
             }
 
+            # 同时提供 url 和 file_data（base64），让 QQ 服务器选择
+            with open(output_path, "rb") as f:
+                file_data = base64.b64encode(f.read()).decode("utf-8")
+
             payload = {
                 "file_type": 4,
                 "url": download_url,
+                "file_data": file_data,
                 "srv_send_msg": False,  # 先不发送，获取 file_info
             }
 
-            _log.info(f"上传文件信息: {download_url}")
+            _log.info(f"上传文件信息: {download_url}, base64 大小: {len(file_data)} bytes")
             response = requests.post(upload_url, headers=headers, json=payload, timeout=120)
             if response.status_code != 200:
                 raise Exception(f"文件上传失败: {response.text}")
