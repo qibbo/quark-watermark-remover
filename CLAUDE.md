@@ -22,6 +22,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew clean
 ```
 
+**打包脚本（推荐）：**
+
+```bash
+python build.py
+```
+
+脚本功能：
+- 检查代码是否有变化（git diff）
+- 有变化 → 自动更新版本号（1.2.0 → 1.2.1）
+- 无变化 → 保持当前版本号
+- 执行 `gradlew assembleRelease`
+- 显示 APK 文件路径和大小
+
 ## 代理配置
 
 访问中国大陆以外的服务（GitHub、Maven Central 等）必须使用代理：
@@ -56,9 +69,27 @@ app/src/main/java/com/quark/watermark/
 │       ├── Color.kt           # 颜色定义
 │       └── Theme.kt           # Material3 主题
 ├── util/
-│   └── FileUtils.kt           # 文件操作：保存、分享、ZIP 打包
+│   ├── FileUtils.kt           # 文件操作：保存、分享、ZIP 打包
+│   └── ImageToPdfUtil.kt      # 截图转 PDF：裁切 A4 区域、图片转 PDF
 └── MainActivity.kt            # 入口：页面导航、文件处理流程
+
+app/src/main/assets/
+└── crop_config.json           # 截图裁切坐标配置（按设备型号）
 ```
+
+## 截图转 PDF 功能
+
+接收其他应用分享的截图，自动裁切 A4 区域并生成 PDF。
+
+**流程：** 截图分享到 app → 裁切 A4 区域 → 生成 PDF → 保存/分享
+
+**配置文件：** `app/src/main/assets/crop_config.json`
+- `default`: 通用 1080p 屏幕的默认裁切坐标
+- `devices`: 按设备型号（`Build.MODEL`）匹配的裁切坐标
+- 单位：像素（px）
+- 以 `_` 开头的字段是说明，代码会自动忽略
+
+**生成的 PDF 文件名格式：** `ID_Copy_yyyymmdd-hhmmss.pdf`
 
 ## 水印移除原理
 
@@ -76,7 +107,7 @@ Pattern.compile("q\\s+[\\d\\s\\.]+cm\\s+/QuarkX2\\s+Do\\s+Q")
 - **语言**: Kotlin 1.9.20
 - **UI**: Jetpack Compose + Material3 (BOM 2023.10.01)
 - **PDF 处理**: iText 7.2.5
-- **构建**: Gradle 8.5, AGP 8.2.0
+- **构建**: Gradle 8.3, AGP 8.2.0
 - **最低 SDK**: 26 (Android 8.0)
 - **目标 SDK**: 34 (Android 14)
 
@@ -121,6 +152,6 @@ Release 签名使用项目根目录的 keystore：
 
 ## 环境要求
 
-- Android SDK: `C:/Android/Sdk`（配置在 `local.properties`）
+- Android SDK: `D:/Development/Android/sdk`（配置在 `local.properties`）
 - JDK: 1.8
 - 代理: FlClash HTTP 代理 127.0.0.1:7890

@@ -39,7 +39,9 @@ fun HomeScreen(
     onClearList: () -> Unit,
     onRemoveFile: (Int) -> Unit,
     onSortFiles: () -> Unit,
-    sortAscending: Boolean
+    sortAscending: Boolean,
+    isImageMode: Boolean = false,
+    deviceModel: String = ""
 ) {
     Column(
         modifier = Modifier
@@ -49,12 +51,25 @@ fun HomeScreen(
             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
     ) {
         // ── 标题 ──
-        Text(
-            text = "夸克去水印",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "夸克去水印",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+            if (deviceModel.isNotEmpty()) {
+                Text(
+                    text = deviceModel,
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -192,7 +207,11 @@ fun HomeScreen(
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("开始去水印", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(
+                    if (isImageMode) "生成身份证复印件" else "开始去水印",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
             }
             OutlinedButton(
                 onClick = onClearList,
