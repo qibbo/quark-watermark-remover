@@ -6,34 +6,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 QuarkPDF 去水印助手 - QQ 机器人，自动去除夸克扫描王 PDF 中的水印。用户通过 QQ 单聊发送 PDF 文件，机器人处理后自动回复。
 
-## 项目状态
-
-**当前状态：可用，但存在已知问题**
-
-- 核心去水印逻辑正常工作
-- QQ 机器人消息收发正常
-- 文件上传采用 URL 方式，避免 base64 膨胀
-- **已知问题：QQ 服务器无法访问 Railway URL（"download file error"）**，暂用 base64 兜底
-
 ## 技术栈
 
-- **语言**: Python 3.11
-- **Web 框架**: FastAPI + Uvicorn
-- **PDF 处理**: pypdf 3.17.1
-- **QQ 机器人**: qq-botpy 1.2.1（QQ 开放平台 SDK）
-- **部署平台**: Railway
+- Python 3.11, FastAPI + Uvicorn, pypdf, qq-botpy 1.2.1
+- 部署平台：Railway
+
+## 构建和运行
+
+```bash
+pip install -r requirements.txt
+
+export QQ_APPID=你的AppID
+export QQ_SECRET=你的AppSecret
+uvicorn app.main:app --reload
+
+python -m pytest tests/
+```
+
+## 环境变量
+
+| 变量 | 说明 |
+|------|------|
+| `QQ_APPID` | QQ 开放平台 AppID |
+| `QQ_SECRET` | QQ 开放平台 AppSecret |
+| `SERVER_URL` | 服务公网地址（Railway 自动设置 `RAILWAY_PUBLIC_DOMAIN`） |
 
 ## 项目结构
 
 ```
 ├── watermark_remover.py   # 核心去水印逻辑（pypdf）
 ├── app/
-│   ├── main.py            # FastAPI 入口，临时文件下载接口，启动 QQ 机器人
-│   ├── qq_bot.py          # QQ 机器人实现（消息处理、文件上传）
+│   ├── main.py            # FastAPI 入口，临时文件下载接口
+│   ├── qq_bot.py          # QQ 机器人（消息处理、文件上传）
 │   └── pdf_processor.py   # PDF 处理异步封装
-├── temp_files/            # 临时文件目录（自动创建，自动清理）
+├── temp_files/            # 临时文件目录（自动清理）
 ├── tests/                 # 单元测试
-├── requirements.txt       # Python 依赖
 ├── Procfile               # Railway 部署配置
 └── railway.json           # Railway 构建配置
 ```
@@ -42,45 +49,15 @@ QuarkPDF 去水印助手 - QQ 机器人，自动去除夸克扫描王 PDF 中的
 
 **当前方案：base64 编码上传**（URL 方案失败，QQ 服务器返回 "download file error"）
 
-```
-1. 用户发送 PDF → 机器人下载并处理
-2. 处理后的 PDF 用 base64 编码
-3. 调用 QQ 富媒体 API（file_data 参数）
-4. 获取 file_info 后发送消息
-```
+流程：用户发送 PDF → 下载处理 → base64 编码 → QQ 富媒体 API → 发送 file_info → 回复用户
 
 **已知限制**：
-- base64 编码使文件体积增加约 33%
-- QQ API 对请求体大小有限制（约 15-20MB，base64 后约 20-27MB 原始文件）
-- 超大文件（30MB+）可能上传失败
+- base64 使体积增加约 33%
+- 实际可处理文件约 15-20MB（受 base64 和 QQ API 限制）
 
 **URL 方案（已尝试但失败）**：
-- 官方文档说 `url` 参数是必填的，`file_data` 是可选的
-- 但 QQ 服务器无法访问 Railway 的 URL（返回 850011 错误）
+- 官方文档说 `url` 必填、`file_data` 可选，但 QQ 服务器无法访问 Railway URL
 - 可能需要在 QQ 开放平台配置域名白名单
-
-## 环境变量
-
-| 变量 | 说明 |
-|------|------|
-| `QQ_APPID` | QQ 开放平台 AppID |
-| `QQ_SECRET` | QQ 开放平台 AppSecret |
-| `SERVER_URL` | 服务公网地址（如 `https://xxx.up.railway.app`），Railway 会自动设置 `RAILWAY_PUBLIC_DOMAIN` |
-
-## 构建和运行
-
-```bash
-# 安装依赖
-pip install -r requirements.txt
-
-# 本地运行
-export QQ_APPID=你的AppID
-export QQ_SECRET=你的AppSecret
-uvicorn app.main:app --reload
-
-# 运行测试
-python -m pytest tests/
-```
 
 ## 部署到 Railway
 
@@ -88,6 +65,13 @@ python -m pytest tests/
 2. 在 [Railway](https://railway.app) 创建项目，连接 GitHub 仓库
 3. 添加环境变量 `QQ_APPID` 和 `QQ_SECRET`
 4. 自动生成公网域名，部署完成
+
+## QQ 机器人注册
+
+1. 访问 [QQ 开放平台](https://q.qq.com)
+2. 创建机器人应用，获取 AppID 和 AppSecret
+3. 消息接收方式选择 **WebSocket**
+4. 订阅事件：`C2C_MESSAGE_CREATE`（单聊消息）
 
 ## 开发历史
 
@@ -98,7 +82,6 @@ QQ 机器人方案经历了多轮调试：
 - 临时文件清理：延迟清理等待 QQ 服务器下载完成
 - 大文件处理：曾添加压缩逻辑，后因无效移除
 - 2026-06-03：尝试 URL 上传方案，但 QQ 服务器无法访问 Railway URL，返回 "download file error"
-- 文件大小限制改为 100MB，实际受 base64 编码和 QQ API 限制
 
 ## 关联分支
 
