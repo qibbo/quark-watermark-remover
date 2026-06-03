@@ -74,15 +74,20 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
             # 生成下载 URL
             server_url = SERVER_URL
             if not server_url:
-                # 尝试从请求中获取（Railway 会设置 RAILWAY_STATIC_URL）
-                server_url = os.getenv("RAILWAY_STATIC_URL", "")
+                # 尝试从环境变量获取
+                server_url = os.getenv("SERVER_URL", "")
+                if not server_url:
+                    server_url = os.getenv("RAILWAY_STATIC_URL", "")
                 if not server_url:
                     server_url = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
-                    if server_url:
-                        server_url = f"https://{server_url}"
 
             if not server_url:
                 raise Exception("SERVER_URL 未配置，无法生成下载链接")
+
+            # 确保有 https:// 前缀
+            server_url = server_url.rstrip("/")
+            if not server_url.startswith("http"):
+                server_url = f"https://{server_url}"
 
             download_url = f"{server_url}/temp/{temp_filename}"
             _log.info(f"生成下载链接: {download_url}")
