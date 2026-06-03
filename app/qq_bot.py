@@ -102,21 +102,22 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
             upload_url = f"https://api.sgroup.qq.com/v2/users/{message.author.user_openid}/files"
             headers = {
                 "Authorization": token.get_string(),
+                "Content-Type": "application/json",
             }
 
-            # 使用 multipart/form-data 上传文件
+            # 使用 base64 上传（QQ 服务器无法访问我们的 URL）
             with open(output_path, "rb") as f:
-                files = {
-                    "file": (temp_filename, f, "application/pdf"),
-                }
-                data = {
-                    "file_type": "4",
-                    "url": download_url,
-                    "srv_send_msg": "false",
-                }
+                file_data = base64.b64encode(f.read()).decode("utf-8")
 
-                _log.info(f"上传文件: {download_url}")
-                response = requests.post(upload_url, headers=headers, data=data, files=files, timeout=120)
+            payload = {
+                "file_type": 4,
+                "url": download_url,  # 仍然需要提供 url，但 QQ 服务器无法访问
+                "file_data": file_data,
+                "srv_send_msg": False,
+            }
+
+            _log.info(f"上传文件 (base64), 大小: {len(file_data)} bytes")
+            response = requests.post(upload_url, headers=headers, json=payload, timeout=120)
             if response.status_code != 200:
                 raise Exception(f"文件上传失败: {response.text}")
 
