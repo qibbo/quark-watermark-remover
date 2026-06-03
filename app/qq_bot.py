@@ -46,9 +46,9 @@ async def process_and_send(message: C2CMessage, file_url: str, file_name: str):
         # 下载文件
         input_path = await download_file(file_url)
 
-        # 检查文件大小（QQ API 限制约 15MB）
+        # 检查文件大小（限制 100MB）
         input_size = os.path.getsize(input_path)
-        if input_size > 15 * 1024 * 1024:
+        if input_size > 100 * 1024 * 1024:
             await message._api.post_c2c_message(
                 openid=message.author.user_openid,
                 msg_type=0,
