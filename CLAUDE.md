@@ -27,7 +27,7 @@ https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890
 | `legacy/pymupdf` | 更早的桌面版实验（PyMuPDF / pypdf 两套引擎），冻结 |
 | `feature/wechat-pdf-bot` | 已中止的微信机器人方案，不再推进 |
 
-注意：`master` 是 Android 分支的祖先，两条线的版本号各自独立（桌面版走到 v1.4.1，Android 版当前 v1.2.8），不要用 tag 互相对照。
+注意：`master` 是 Android 分支的祖先，两条线的版本号各自独立。桌面版停在 v1.4.1（`v1.0.0`～`v1.4.1` 这批 tag 全部属于桌面版技术验证），**Android 线自 `2.0.0` 起号**，当前 v2.0.0，不要用 tag 跨线对照。
 
 ## 构建命令
 
@@ -70,6 +70,9 @@ python build.py
 **规则：**
 - 有代码变更 → 必须更新版本号 → 再打包
 - 仅重新打包（无代码变更）→ 版本号不变
+- Android 线编号从 `2.0.0` 起（`1.x` 属于桌面版历史），发布时打 `v{version}` tag 并把 APK 上传到 Releases
+
+**注意**：`build.py` 的变更检测把**未跟踪文件**也算作代码变更，项目里存在 `草稿纸_勿删.md`、`.workbuddy/` 这类本地文件时，会误判并递增版本号。需要精确控制版本号时直接跑 `./gradlew assembleRelease`。
 
 ## 核心架构
 

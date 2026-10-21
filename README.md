@@ -75,9 +75,13 @@ python build.py
 
 **版本规则**：代码有变更时必须同时递增 `app/build.gradle.kts` 中的 `appVersionName` 与 `versionCode`；仅重新打包则版本号不变。`build.py` 会自动处理这一步。
 
-## 发布状态
+## 版本与发布
 
-当前版本 **v1.2.8**（versionCode 21）。GitHub Releases 尚未发布 APK，需按上述步骤本地打包。
+当前版本 **v2.0.0**（versionCode 22）。
+
+APK 从 [Releases](../../releases) 页面下载。
+
+Android 线自 **2.0.0** 起号：`v1.0.0`～`v1.4.1` 这些 tag 属于早期的桌面版技术验证，与 Android 版没有版本延续关系。
 
 ## 环境要求
 
