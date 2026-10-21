@@ -74,6 +74,11 @@ python build.py
 
 **注意**：`build.py` 的变更检测把**未跟踪文件**也算作代码变更，项目里存在 `草稿纸_勿删.md`、`.workbuddy/` 这类本地文件时，会误判并递增版本号。需要精确控制版本号时直接跑 `./gradlew assembleRelease`。
 
+**发布约定：**
+- tag 用 `v{version}`，指向 `master` 当前提交
+- Release 资产必须用**纯 ASCII 文件名**：`quark-watermark-v{version}-release.apk`
+- 直接用中文文件名（`夸克去水印_v2.0.0-release.apk`）上传，GitHub 会把中文吞掉，资产名变成 `_v2.0.0-release.apk`
+
 ## 核心架构
 
 ```

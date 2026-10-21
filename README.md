@@ -79,7 +79,7 @@ python build.py
 
 当前版本 **v2.0.0**（versionCode 22）。
 
-APK 从 [Releases](../../releases) 页面下载。
+**[下载 APK](../../releases/download/v2.0.0/quark-watermark-v2.0.0-release.apk)** ｜ 历史版本见 [Releases](../../releases)
 
 Android 线自 **2.0.0** 起号：`v1.0.0`～`v1.4.1` 这些 tag 属于早期的桌面版技术验证，与 Android 版没有版本延续关系。
 
