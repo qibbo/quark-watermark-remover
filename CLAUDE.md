@@ -178,5 +178,6 @@ Release 签名使用项目根目录的 keystore：
 
 ## 环境要求
 
-- Android SDK: `D:/Development/Android/sdk`（配置在 `local.properties`）
-- JDK: 1.8
+- Android SDK: 路径写入 `local.properties` 的 `sdk.dir`（本机曾用 `D:/Development/Android/sdk`）
+- JDK: **17**（AGP 8.2.0 的硬性要求；`compileOptions` 里的 `VERSION_1_8` 是 Java 语言级别，不是 JDK 版本）
+- 打包前需确保 `JAVA_HOME` 指向 JDK 17，否则 `./gradlew` 会直接报 "JAVA_HOME is not set"
