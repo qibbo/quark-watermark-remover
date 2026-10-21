@@ -2,9 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 代理配置
+
+访问中国大陆以外的服务时，必须使用 FlClash HTTP 代理：
+
+```bash
+https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890
+```
+
+适用于：GitHub、Railway、npm registry、pip source 等境外服务。不要默认改用 SSH 方式绕过。中国大陆服务（如 Gitee）不走代理。
+
 ## 项目概述
 
-夸克去水印 (Quark Watermark Remover) - Android 应用，用于移除夸克扫描王 PDF 中的水印。纯本地处理，无需联网。
+夸克去水印 (Quark Watermark Remover) - Android 应用，用于移除夸克扫描王 PDF 中的水印，并把分享进来的截图裁切成 A4 生成复印件 PDF。纯本地处理，无需联网。
+
+**唯一的交付形态是 Android 应用。** 仓库中的 Python 桌面版只是最初的技术验证，已冻结、不再维护，改动不要回灌到桌面版。
+
+## 分支策略
+
+| 分支 | 用途 |
+|---|---|
+| `feature/android-apk` | **活跃开发分支**，Android 版全部代码在此 |
+| `master` | 早期 Python + PyQt 桌面版（技术验证存档），冻结 |
+| `legacy/pymupdf` | 更早的桌面版实验（PyMuPDF / pypdf 两套引擎），冻结 |
+| `feature/wechat-pdf-bot` | 已中止的微信机器人方案，不再推进 |
+
+注意：`master` 是 Android 分支的祖先，两条线的版本号各自独立（桌面版走到 v1.4.1，Android 版当前 v1.2.8），不要用 tag 互相对照。
 
 ## 构建命令
 
@@ -34,14 +57,6 @@ python build.py
 - 无变化 → 保持当前版本号
 - 执行 `gradlew assembleRelease`
 - 显示 APK 文件路径和大小
-
-## 代理配置
-
-访问中国大陆以外的服务（GitHub、Maven Central 等）必须使用代理：
-
-```bash
-https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890 ./gradlew <task>
-```
 
 ## 版本管理
 
@@ -84,10 +99,11 @@ app/src/main/assets/
 **流程：** 截图分享到 app → 裁切 A4 区域 → 生成 PDF → 保存/分享
 
 **配置文件：** `app/src/main/assets/crop_config.json`
-- `default`: 通用 1080p 屏幕的默认裁切坐标
+- `default`: 默认裁切坐标（采用一加Ace5至尊版数据）
 - `devices`: 按设备型号（`Build.MODEL`）匹配的裁切坐标
 - 单位：像素（px）
 - 以 `_` 开头的字段是说明，代码会自动忽略
+- 已适配机型：红米K60、一加Ace5至尊版、realme X7 Pro
 
 **生成的 PDF 文件名格式：** `ID_Copy_yyyymmdd-hhmmss.pdf`
 
@@ -113,7 +129,7 @@ Pattern.compile("q\\s+[\\d\\s\\.]+cm\\s+/QuarkX2\\s+Do\\s+Q")
 
 ## 错误分类
 
-`WatermarkRemover.classifyError()` 将异常转为友好提示，与桌面版保持一致：
+`WatermarkRemover.classifyError()` 将异常转为友好提示：
 
 | 关键词 | 提示 |
 |--------|------|
@@ -150,8 +166,14 @@ Release 签名使用项目根目录的 keystore：
 
 测试用例覆盖：正常PDF、无水印、损坏文件、非PDF、空文件、加密PDF、多页PDF。
 
+**注意**：其中 6 个用例依赖项目根目录的 `test_pdfs/` 样本（如 `正常_带水印.pdf`），该目录未纳入版本控制。样本缺失时这 6 个用例会失败，只有 3 个纯正则用例能通过。
+
+## 已知问题
+
+- `WatermarkRemover` 只读取 `page.getPdfObject().getAsStream(Contents)`；若页面内容流是数组（被多次追加写过的 PDF 常见），会取到 null 从而跳过该页，水印漏删。
+- `MainActivity` 的 `savedUriMap` / `skipWatermarkSet` 是 Activity 级可变 Map，Compose 状态也未用 `rememberSaveable`。屏幕旋转或进程被回收后 URI 映射丢失，处理会中断。
+
 ## 环境要求
 
 - Android SDK: `D:/Development/Android/sdk`（配置在 `local.properties`）
 - JDK: 1.8
-- 代理: FlClash HTTP 代理 127.0.0.1:7890

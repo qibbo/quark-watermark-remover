@@ -1,56 +1,100 @@
 # 夸克去水印 - Android 版
 
+<p align="center">
+  <img src="logo/logo.png" width="100" alt="Logo">
+</p>
+
 去除夸克扫描王 PDF 中的水印，纯本地处理，无需联网。
+
+> **本项目唯一的交付形态是 Android 应用。**
+> 仓库中的 Python 桌面版（`master`、`legacy/pymupdf` 分支）仅作为早期技术验证存档，已冻结、不再维护；
+> `feature/wechat-pdf-bot` 为已中止的尝试。所有开发在 `feature/android-apk` 分支进行。
 
 ## 功能
 
-- 选择 PDF 文件，一键去除水印
-- 批量处理多个文件
-- 纯本地处理，不上传任何文件
-- 处理后可保存到本地或分享给其他应用
-- 单文件直接分享 PDF，多文件自动打包 ZIP（兼容微信/QQ）
-- **截图转 PDF**：从 WPS 等应用分享截图，自动裁切 A4 区域生成 PDF
+- 选择 PDF 文件一键去水印，支持批量处理
+- 纯本地处理，不申请网络权限，不上传任何文件
+- 处理结果可保存到本地（`Download/夸克去水印/`）或分享给其他应用
+- 单文件直接分享 PDF，多文件自动打包 ZIP（兼容微信、QQ 等不支持多附件分享的应用）
+- **截图转 PDF**：接收其他应用分享的截图，按机型坐标裁切 A4 区域生成复印件 PDF
 
 ## 技术方案
 
-- 语言：Kotlin
-- UI：Jetpack Compose + Material3
-- PDF 库：iText 7.2.5
-- 核心逻辑：解析 PDF 内容流，正则匹配并移除 `QuarkX2` 水印指令
+| 项 | 选型 |
+|---|---|
+| 语言 | Kotlin 1.9.20 |
+| UI | Jetpack Compose + Material3（BOM 2023.10.01） |
+| PDF 处理 | iText 7.2.5 |
+| 构建 | Gradle 8.3 / AGP 8.2.0 |
+| 最低 / 目标 SDK | 26 (Android 8.0) / 34 (Android 14) |
 
-## 截图转 PDF
+水印移除原理：遍历 PDF 页面内容流，正则匹配夸克水印指令 `q ... cm /QuarkX2 Do Q` 并移除。
 
-从 WPS 等应用分享截图，自动裁切 A4 区域生成 PDF。
+## 使用
 
-**使用方法：**
-1. 在 WPS 中打开身份证复印件预览
+### 去水印
+
+1. 打开应用，点击「点击选择 PDF 文件」，可多选
+2. 点击「开始去水印」
+3. 在结果页查看逐文件状态，然后保存到本地或分享
+
+也可以在文件管理器中长按 PDF → 分享 → 选择本应用，直接导入。
+
+### 截图转 PDF
+
+1. 在 WPS 等应用中打开复印件预览
 2. 截图
-3. 分享到本 app
-4. 自动生成 PDF，可保存或分享
+3. 分享到本应用，自动裁切 A4 区域并生成 PDF
 
-**配置文件：** `app/src/main/assets/crop_config.json`
-- 按设备型号配置裁切坐标（单位：像素）
-- 添加新机型只需在 `devices` 中加一行
-- 设备型号获取：`adb shell getprop ro.product.model`
+裁切坐标存放在 `app/src/main/assets/crop_config.json`，按 `Build.MODEL` 匹配机型，未匹配时使用 `default`。
 
-**生成的 PDF 文件名格式：** `ID_Copy_yyyymmdd-hhmmss.pdf`
+| 机型 | 型号代码 |
+|---|---|
+| 红米 K60 | 23013RK75C |
+| 一加 Ace5 至尊版 | PLC110 |
+| realme X7 Pro | RMX2121 |
+
+新增机型的步骤：
+
+1. `adb shell getprop ro.product.model` 取得型号代码
+2. 在该机型上截一张复印件预览图，量出 A4 区域的 `left` / `top` / `width` / `height`（单位 px）
+3. 在 `crop_config.json` 的 `devices` 中补一条配置
 
 ## 构建
 
 ```bash
-# Debug 版本
-./gradlew assembleDebug
+# 推荐：自动检查改动、递增版本号，然后打包 Release
+python build.py
 
-# Release 版本
+# 手动方式
 ./gradlew assembleRelease
+./gradlew test
 ```
 
-## 下载
+产物路径：`app/build/outputs/apk/release/夸克去水印_v{version}-release.apk`
 
-从 [Releases](../../releases) 页面下载最新 APK。
+**版本规则**：代码有变更时必须同时递增 `app/build.gradle.kts` 中的 `appVersionName` 与 `versionCode`；仅重新打包则版本号不变。`build.py` 会自动处理这一步。
 
-## 截图
+## 发布状态
 
-<p align="center">
-  <img src="logo/logo.png" width="100" alt="Logo">
-</p>
+当前版本 **v1.2.8**（versionCode 21）。GitHub Releases 尚未发布 APK，需按上述步骤本地打包。
+
+## 环境要求
+
+- JDK 1.8
+- Android SDK：路径写入 `local.properties` 的 `sdk.dir`
+- 访问 Maven Central 等境外源需要代理，配置见 `CLAUDE.md`
+
+## 项目结构
+
+```
+app/src/main/java/com/quark/watermark/
+├── core/WatermarkRemover.kt    # 水印移除核心逻辑（iText 7）
+├── ui/HomeScreen.kt            # 首页：文件选择、列表、进度
+├── ui/ResultScreen.kt          # 结果页：统计、保存、分享
+├── util/FileUtils.kt           # 保存、分享、ZIP 打包
+├── util/ImageToPdfUtil.kt      # 截图裁切 A4 并转 PDF
+└── MainActivity.kt             # 入口与流程编排
+
+app/src/main/assets/crop_config.json   # 机型裁切坐标
+```
