@@ -208,7 +208,7 @@ fun HomeScreen(
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(
-                    if (isImageMode) "生成身份证复印件" else "开始去水印",
+                    if (isImageMode) "生成复印件PDF" else "开始去水印",
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
