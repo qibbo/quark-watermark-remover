@@ -14,3 +14,6 @@ build/
 *.keystore
 *.jks
 java_pid*.hprof
+
+# 测试样本（含个人文档，不入版本控制）
+test_pdfs/
