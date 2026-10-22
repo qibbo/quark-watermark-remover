@@ -13,6 +13,18 @@ import sys
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_FILE = os.path.join(PROJECT_DIR, "app", "build.gradle.kts")
 
+# 只有这些路径的改动才算"代码变更"（会影响 APK 内容）。
+# 文档、笔记、测试样本、.workbuddy/ 等一律不算，避免版本号虚增。
+CODE_PATHS = (
+    "app/src",
+    "app/build.gradle.kts",
+    "app/proguard-rules.pro",
+    "build.gradle.kts",
+    "settings.gradle.kts",
+    "gradle.properties",
+    "gradle/",
+)
+
 
 def run_cmd(cmd, cwd=None):
     """执行命令并返回结果"""
@@ -26,25 +38,40 @@ def run_cmd(cmd, cwd=None):
     return result.returncode == 0, result.stdout.strip()
 
 
-def check_git_changes():
-    """检查代码是否有变化"""
-    # 检查未提交的修改
-    ok, _ = run_cmd("git diff --quiet HEAD")
-    if not ok:
-        return True
+def is_code_path(path):
+    """判断改动是否落在会影响 APK 的代码路径上"""
+    p = path.replace("\\", "/").strip().lstrip("./")
+    for prefix in CODE_PATHS:
+        if p == prefix.rstrip("/") or p.startswith(prefix):
+            return True
+    return False
 
-    # 检查暂存区
-    ok, _ = run_cmd("git diff --cached --quiet")
-    if not ok:
-        return True
 
-    # 检查未跟踪的文件（排除 build 和 .gradle）
+def check_code_changes():
+    """检查代码是否有变化（只看影响 APK 的路径）"""
+    changed = []
+
+    # 工作区未提交的修改
+    ok, output = run_cmd("git diff --name-only HEAD")
+    if ok and output:
+        changed += output.split("\n")
+
+    # 暂存区
+    ok, output = run_cmd("git diff --cached --name-only")
+    if ok and output:
+        changed += output.split("\n")
+
+    # 未跟踪的新文件
     ok, output = run_cmd("git ls-files --others --exclude-standard")
     if ok and output:
-        lines = [l for l in output.split("\n") if l and "build/" not in l and ".gradle/" not in l]
-        if lines:
-            return True
+        changed += output.split("\n")
 
+    code_files = [f for f in changed if f.strip() and is_code_path(f)]
+    if code_files:
+        print("变动文件：")
+        for f in code_files:
+            print(f"  {f}")
+        return True
     return False
 
 
@@ -148,7 +175,7 @@ def main():
     print(f"当前版本：{version} ({code})")
 
     # 检查代码变化
-    has_changes = check_git_changes()
+    has_changes = check_code_changes()
 
     if has_changes:
         print("检测到代码变化，更新版本号...")

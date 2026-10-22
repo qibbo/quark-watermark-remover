@@ -80,7 +80,7 @@ python build.py
 
 Android 线编号从 `2.0.0` 起，`1.x` 属于桌面版历史。
 
-**注意**：`build.py` 的变更检测把**未跟踪文件**也算作代码变更。仓库里存在 `草稿纸_勿删.md`、`.workbuddy/` 这类本地文件时会误判并递增版本号，需要精确控制版本号时直接跑 `./gradlew assembleRelease`。
+`build.py` 只把**影响 APK 的路径**算作代码变更：`app/src/`、`app/build.gradle.kts`、`app/proguard-rules.pro`、根目录的 `build.gradle.kts` / `settings.gradle.kts` / `gradle.properties` / `gradle/`。文档、测试样本、`.workbuddy/`、草稿纸等改动不会触发版本号递增；命中时会打印具体变动文件。
 
 ### 发布约定
 
