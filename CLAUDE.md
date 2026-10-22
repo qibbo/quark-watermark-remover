@@ -17,7 +17,7 @@
 | `legacy/pymupdf` | 更早的桌面版实验（PyMuPDF / pypdf 两套引擎），冻结 |
 | `feature/wechat-pdf-bot` | 已中止的微信机器人方案，不再推进 |
 
-`master` 是 Android 分支的祖先，早期提交里是 Python 桌面版代码。两条线的版本号各自独立：桌面版停在 v1.4.1（`v1.0.0`～`v1.4.1` 这批 tag 全部属于桌面版），**Android 线自 `2.0.0` 起号**，当前 v2.0.1，不要用 tag 跨线对照。
+`master` 是 Android 分支的祖先，早期提交里是 Python 桌面版代码。两条线的版本号各自独立：桌面版停在 v1.4.1（`v1.0.0`～`v1.4.1` 这批 tag 全部属于桌面版），**Android 线自 `2.0.0` 起号**，当前 v2.0.3，不要用 tag 跨线对照。
 
 ## 环境要求
 
@@ -92,6 +92,7 @@ Android 线编号从 `2.0.0` 起，`1.x` 属于桌面版历史。
 
 | 版本 | 内容 |
 |---|---|
+| v2.0.3 | 输出文件名后缀由 `_去水印` 改为 `_Y`（如 `合同.pdf` → `合同_Y.pdf`） |
 | v2.0.2 | 适配夸克新版水印：页面下方追加白条的情况会裁回标准 A4；支持 Contents 为数组的页面 |
 | v2.0.1 | 新增小米15（`24129PN74C`）裁切适配；红米K60 数据标记存疑 |
 | v2.0.0 | Android 线起号；新增 realme X7 Pro 适配；图片模式按钮文案通用化为「生成复印件PDF」 |
@@ -151,9 +152,7 @@ app/src/main/assets/
 5. 校验 `width ÷ height ≈ 0.707`，偏差超过 2% 说明取点错误
 6. 写入 `devices` 并升级版本号
 
-注意：「显示大小」「字体大小」「导航方式」都会改变 WPS 顶部工具栏高度，进而影响 `top`。测量时保持日常使用的设置。
-
-**生成的 PDF 文件名格式：** `ID_Copy_yyyymmdd-hhmmss.pdf`
+注意：「显示大小」「字体大小」「导航方式」都会改变 WPS 顶部工具栏高度，进而影响 `top`。测量时保持日常使用的设置。生成的文件名规则见「文件命名」一节。
 
 ## 水印移除原理
 
@@ -209,6 +208,17 @@ diff < 0           → 不裁（比 A4 矮，不拉伸）
 | no pages/page_count/无内容 | PDF无内容 |
 | path/name too long/路径过长 | 路径过长 |
 | 其他 | 未知错误: {前50字符} |
+
+## 文件命名
+
+| 场景 | 命名规则 | 实现位置 |
+|---|---|---|
+| PDF 去水印输出 | `原文件名_Y.pdf`（`合同.pdf` → `合同_Y.pdf`） | `FileUtils.getOutputFileName()` |
+| 截图转 PDF 输出 | `ID_Copy_yyyyMMdd-HHmmss.pdf` | `MainActivity.processFiles()` |
+| 多文件分享的压缩包 | `去水印结果_共N个_时间戳.zip` | `FileUtils.createZipFromPdfs()` |
+| 保存目录 | `Download/夸克去水印/` | `FileUtils.saveToDownloads()` |
+
+注意：图片模式（截图转 PDF）生成的文件已经是 `ID_Copy_` 格式，保存时**不追加** `_Y` 后缀，避免出现 `ID_Copy_xxx_Y.pdf`。
 
 ## 分享机制
 
