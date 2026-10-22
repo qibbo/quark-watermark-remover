@@ -42,7 +42,7 @@
 |---|---|---|---|
 | 一加 Ace5 至尊版 | `PLC110` | 1264×2780 | 已验证，同时作为 `default` |
 | realme X7 Pro | `RMX2121` | 1080×2400 | 已验证 |
-| 小米15 | `24129PN74C` | 1200×2670 | 已配置，待实机验证 |
+| 小米15 | `24129PN74C` | 1200×2670 | 已验证（v2.0.1 起支持） |
 | 红米 K60 | `23013RK75C` | 1220×2712 | **数据存疑，待重测** |
 
 红米 K60 的左右边距为 42/176，明显不对称，疑似 `left` 偏小，暂未修正，详见 `crop_config.json` 中的 `_备注`。
@@ -89,8 +89,8 @@ python build.py
 
 | 项目 | 状态 |
 |---|---|
-| 源码版本 | **v2.0.1**（versionCode 23），已加入小米15 适配，尚未打包 |
-| 最新发布 | **v2.0.0** → [下载 APK](../../releases/download/v2.0.0/quark-watermark-v2.0.0-release.apk) |
+| 源码版本 | **v2.0.1**（versionCode 23） |
+| 最新发布 | **v2.0.1** → [下载 APK](../../releases/download/v2.0.1/quark-watermark-v2.0.1-release.apk) |
 
 历史版本见 [Releases](../../releases)。
 
