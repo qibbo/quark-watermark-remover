@@ -7,8 +7,8 @@
 去除夸克扫描王 PDF 中的水印，纯本地处理，无需联网。
 
 > **本项目唯一的交付形态是 Android 应用。**
-> 仓库中的 Python 桌面版（`master` 早期提交、`legacy/pymupdf` 分支）仅作为最开始的技术验证存档，已冻结、不再维护；
-> `feature/wechat-pdf-bot` 为已中止的尝试。所有开发在 `feature/android-apk` 分支进行。
+> 仓库中的 Python 桌面版（`master` 早期提交、`legacy/pymupdf` 分支）仅作为最开始的技术验证存档，已冻结、不再维护。
+> 所有开发在 `master` 上进行。
 
 ## 功能
 

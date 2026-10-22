@@ -15,7 +15,8 @@
 | `feature/android-apk` | **活跃开发分支**，Android 版全部代码在此 |
 | `master` | 默认分支，与 `feature/android-apk` 保持同一提交 |
 | `legacy/pymupdf` | 更早的桌面版实验（PyMuPDF / pypdf 两套引擎），冻结 |
-| `feature/wechat-pdf-bot` | 已中止的微信机器人方案，不再推进 |
+
+已删除的分支：`feature/strip-crop`（白条裁剪实验，已合并）、`feature/wechat-pdf-bot`（已中止的微信机器人方案）。
 
 `master` 是 Android 分支的祖先，早期提交里是 Python 桌面版代码。两条线的版本号各自独立：桌面版停在 v1.4.1（`v1.0.0`～`v1.4.1` 这批 tag 全部属于桌面版），**Android 线自 `2.0.0` 起号**，当前 v2.0.3，不要用 tag 跨线对照。
 
