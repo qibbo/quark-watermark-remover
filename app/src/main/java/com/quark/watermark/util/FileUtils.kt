@@ -44,12 +44,13 @@ object FileUtils {
         }
     }
 
+    /** 输出文件名：原文件名 + _Y 后缀（如 合同.pdf → 合同_Y.pdf） */
     fun getOutputFileName(inputName: String): String {
         val dotIndex = inputName.lastIndexOf('.')
         return if (dotIndex > 0) {
-            "${inputName.substring(0, dotIndex)}_去水印${inputName.substring(dotIndex)}"
+            "${inputName.substring(0, dotIndex)}_Y${inputName.substring(dotIndex)}"
         } else {
-            "${inputName}_去水印"
+            "${inputName}_Y"
         }
     }
 
